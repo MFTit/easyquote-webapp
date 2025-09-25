@@ -7,20 +7,56 @@
 <body>
   <h1>Quotation</h1>
 
-  <h2 id="quote-number">Quote #...</h2>
+  <h2 id="quote-number">Loading...</h2>
 
   <h3>Items</h3>
-  <div id="items">[Items table will load here]</div>
+  <div id="items">Loading...</div>
 
   <h3>Total</h3>
-  <div id="total">0</div>
+  <div id="total">Loading...</div>
 
   <h3>Terms & Conditions</h3>
-  <div id="terms">[Terms will load here]</div>
+  <div id="terms">Loading...</div>
 
   <h3>Respond</h3>
   <button>Accept</button>
   <button>Negotiate</button>
   <button>Deny</button>
+
+  <script>
+    async function loadQuote() {
+      const resp = await fetch("/api/quote");
+      const json = await resp.json();
+
+      if (!json.ok) {
+        document.getElementById("quote-number").textContent = "Error loading quote";
+        return;
+      }
+
+      const data = json.data;
+      document.getElementById("quote-number").textContent = "Quote #" + data.quote_number;
+      document.getElementById("total").textContent = data.net_total;
+      document.getElementById("terms").textContent = data.terms;
+
+      // Build table for items
+      let html = "<table border='1' cellpadding='6' cellspacing='0'>";
+      html += "<tr><th>Product</th><th>Description</th><th>Qty</th><th>Price</th><th>Discount</th><th>Tax</th><th>Total</th></tr>";
+      data.items.forEach(it => {
+        html += `<tr>
+          <td>${it.product_name}</td>
+          <td>${it.description}</td>
+          <td>${it.quantity}</td>
+          <td>${it.list_price}</td>
+          <td>${it.discount}</td>
+          <td>${it.tax}</td>
+          <td>${it.line_total}</td>
+        </tr>`;
+      });
+      html += "</table>";
+      document.getElementById("items").innerHTML = html;
+    }
+
+    loadQuote();
+  </script>
 </body>
 </html>

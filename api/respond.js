@@ -27,7 +27,11 @@ export default async function handler(req, res) {
 
     // expire token if accepted/denied
     if (action === "Accepted" || action === "Denied") {
-      updateMap.Acceptance_Token_Expires = new Date().toISOString();
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, "0");
+      const d = String(now.getDate()).padStart(2, "0");
+      updateMap.Acceptance_Token_Expires = `${y}-${m}-${d}`; // ✅ yyyy-MM-dd
     }
 
     // Step 3: update Quote in CRM
@@ -44,6 +48,10 @@ export default async function handler(req, res) {
     );
 
     const crmData = await crmResp.json();
+
+    // 🔎 log Zoho response for debugging
+    console.log("Zoho CRM update response:", crmData);
+
     return res.status(200).json({ ok: true, data: crmData });
   } catch (err) {
     return res.status(500).json({ error: err.message });

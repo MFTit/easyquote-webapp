@@ -152,6 +152,32 @@
 
   loadQuote();
 })();
+    // … function code …
+async function sendAction(action){
+    try{
+      const name = prompt("Please enter your name:") || "";
+      const comment = document.getElementById("comment").value;
+      const resp = await fetch("/api/respond", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ qid, action, comment, name })
+      });
+      const data = await resp.json();
+      if(data.ok){
+        alert(`Quote updated as ${action}!`);
+        location.reload();
+      }else{
+        alert("Failed: " + (data.error || JSON.stringify(data)));
+      }
+    }catch(err){
+      alert("Error: " + err.message);
+    }
+  }
+
+
+
+
+  
 </script>
 </body>
 </html>

@@ -19,7 +19,13 @@
     .error { color:#b91c1c; }
     .pill { display:inline-block; padding:4px 8px; border-radius:999px; background:#eef2ff; color:#3730a3; font-size:12px; }
     .footer-note { font-size:12px; color:#6b7280; text-align:center; margin-top:12px; }
-    .actions button { opacity:.45; cursor:not-allowed; } /* enabled in next step */
+    textarea { width:100%; padding:8px; border:1px solid #d1d5db; border-radius:8px; }
+    button { padding:8px 16px; border-radius:8px; border:none; cursor:pointer; background:#2563eb; color:#fff; }
+    button:hover { background:#1d4ed8; }
+    .actions button:nth-child(2){ background:#f59e0b; }
+    .actions button:nth-child(2):hover{ background:#d97706; }
+    .actions button:nth-child(3){ background:#dc2626; }
+    .actions button:nth-child(3):hover{ background:#b91c1c; }
   </style>
 </head>
 <body>
@@ -73,18 +79,17 @@
     <div id="terms" class="muted">No terms provided.</div>
   </div>
 
-  <div class="card">
-  <h3>Respond</h3>
-  <div style="margin-bottom:8px;">
-    <textarea id="comment" placeholder="Add comments here (optional)" rows="3" style="width:100%;"></textarea>
+  <div class="card respond-card">
+    <h3>Respond</h3>
+    <div style="margin-bottom:8px;">
+      <textarea id="comment" placeholder="Add comments here (optional)" rows="3"></textarea>
+    </div>
+    <div class="actions" style="display:flex; gap:8px; flex-wrap:wrap;">
+      <button onclick="sendAction('Accepted')">Accept</button>
+      <button onclick="sendAction('Negotiated')">Negotiate</button>
+      <button onclick="sendAction('Denied')">Deny</button>
+    </div>
   </div>
-  <div style="display:flex; gap:8px; flex-wrap:wrap;">
-    <button onclick="sendAction('Accepted')">Accept</button>
-    <button onclick="sendAction('Negotiated')">Negotiate</button>
-    <button onclick="sendAction('Denied')">Deny</button>
-  </div>
-</div>
-
 
   <div id="msg" class="footer-note"></div>
 </div>
@@ -93,7 +98,7 @@
 (function(){
   const qs = new URLSearchParams(location.search);
   const qid = qs.get("qid");
-  window.qid = qid; // 👈 expose to button functions
+  window.qid = qid; // expose globally for sendAction
   const el = (id)=>document.getElementById(id);
   const fmtMoney = (n)=> typeof n === "number" ? n.toLocaleString(undefined,{maximumFractionDigits:2}) : (n||"—");
   const fmtDate = (s)=> s ? new Date(s).toLocaleDateString() : "—";
@@ -145,7 +150,15 @@
       el("totals").textContent = `Subtotal: ${fmtMoney(d.sub_total)}   |   Grand Total: ${fmtMoney(d.grand_total)}`;
       el("terms").innerHTML = d.terms ? esc(d.terms).replace(/\n/g,"<br>") : "<span class='muted'>No terms provided.</span>";
 
-      el("msg").textContent = "Loaded successfully.";
+      // status logic: hide buttons if already accepted/denied
+      if (d.status === "Accepted" || d.status === "Denied") {
+        document.querySelector(".actions").style.display = "none";
+        const msg = d.status === "Accepted"
+          ? "✅ This quote has been accepted."
+          : "❌ This quote has been denied.";
+        el("msg").textContent = msg;
+      }
+
     }catch(err){
       el("subtitle").innerHTML = `<span class='error'>${err.message}</span>`;
     }
@@ -153,32 +166,27 @@
 
   loadQuote();
 })();
-    // … function code …
+
 async function sendAction(action){
-    try{
-      const name = prompt("Please enter your name:") || "";
-      const comment = document.getElementById("comment").value;
-      const resp = await fetch("/api/respond", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ qid, action, comment, name })
-      });
-      const data = await resp.json();
-      if(data.ok){
-        alert(`Quote updated as ${action}!`);
-        location.reload();
-      }else{
-        alert("Failed: " + (data.error || JSON.stringify(data)));
-      }
-    }catch(err){
-      alert("Error: " + err.message);
+  try{
+    const name = prompt("Please enter your name:") || "";
+    const comment = document.getElementById("comment").value;
+    const resp = await fetch("/api/respond", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ qid, action, comment, name })
+    });
+    const data = await resp.json();
+    if(data.ok){
+      alert(data.message || `Quote updated as ${action}!`);
+      location.reload();
+    }else{
+      alert("Failed: " + (data.message || JSON.stringify(data)));
     }
+  }catch(err){
+    alert("Error: " + err.message);
   }
-
-
-
-
-  
+}
 </script>
 </body>
 </html>

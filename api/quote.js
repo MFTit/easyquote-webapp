@@ -1,17 +1,38 @@
-export default function handler(req, res) {
-  res.status(200).json({
-    ok: true,
-    data: {
-      quote_id: "123456789",
-      quote_number: "Q-2025-001",
-      net_total: 1200,
-      valid_till: "2025-12-31",
-      terms: "Standard terms and conditions apply.",
-      status: "Pending",
-      items: [
-        { product_name: "Product A", description: "Test item", quantity: 2, list_price: 500, discount: 0, tax: 50, line_total: 1050 },
-        { product_name: "Product B", description: "Second item", quantity: 1, list_price: 200, discount: 0, tax: 0, line_total: 200 }
-      ]
+export default async function handler(req, res) {
+  try {
+    const { qid } = req.query; // quote ID from URL
+
+    if (!qid) {
+      return res.status(400).json({ error: "Missing ?qid in request" });
     }
-  });
+
+    // Step 1: Get Access Token using Refresh Token
+    const tokenResp = await fetch(
+      `${process.env.ZOHO_ACCOUNTS_URL}/oauth/v2/token?refresh_token=${process.env.ZOHO_REFRESH_TOKEN}&client_id=${process.env.ZOHO_CLIENT_ID}&client_secret=${process.env.ZOHO_CLIENT_SECRET}&grant_type=refresh_token`,
+      { method: "POST" }
+    );
+
+    const tokenData = await tokenResp.json();
+    if (!tokenData.access_token) {
+      return res.status(400).json({ error: "Failed to refresh access token", details: tokenData });
+    }
+
+    const accessToken = tokenData.access_token;
+
+    // Step 2: Call Zoho CRM API
+    const crmResp = await fetch(
+      `${process.env.ZOHO_API_BASE}/crm/v2/Quotes/${qid}`,
+      {
+        headers: {
+          Authorization: `Zoho-oauthtoken ${accessToken}`,
+        },
+      }
+    );
+
+    const crmData = await crmResp.json();
+
+    return res.status(200).json({ ok: true, data: crmData });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
 }

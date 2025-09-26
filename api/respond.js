@@ -20,17 +20,14 @@ export default async function handler(req, res) {
 
     // Step 2: build update map
     let updateMap = {
-      Acceptance_Status: action, // value from button
+      Acceptance_Status: action,
       Client_Response: comment || null,
       Acknowledged_By: name || null,
     };
 
+    // expire token if accepted/denied → DateTime required
     if (action === "Accepted" || action === "Denied") {
-      const now = new Date();
-      const y = now.getFullYear();
-      const m = String(now.getMonth() + 1).padStart(2, "0");
-      const d = String(now.getDate()).padStart(2, "0");
-      updateMap.Acceptance_Token_Expires = `${y}-${m}-${d}`;
+      updateMap.Acceptance_Token_Expires = new Date().toISOString(); // ✅ send full datetime
     }
 
     // Step 3: update Quote in CRM

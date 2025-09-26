@@ -25,9 +25,18 @@ export default async function handler(req, res) {
       Acknowledged_By: name || null,
     };
 
-    // expire token if accepted/denied → DateTime required
+    // expire token if accepted/denied → proper DateTime format with offset
     if (action === "Accepted" || action === "Denied") {
-      updateMap.Acceptance_Token_Expires = new Date().toISOString(); // ✅ send full datetime
+      const now = new Date();
+      const tzOffset = -now.getTimezoneOffset(); // in minutes
+      const sign = tzOffset >= 0 ? "+" : "-";
+      const pad = (n) => String(Math.floor(Math.abs(n))).padStart(2, "0");
+      const hh = pad(tzOffset / 60);
+      const mm = pad(tzOffset % 60);
+      const offset = `${sign}${hh}:${mm}`;
+
+      const formatted = now.toISOString().split(".")[0] + offset;
+      updateMap.Acceptance_Token_Expires = formatted;
     }
 
     // Step 3: update Quote in CRM

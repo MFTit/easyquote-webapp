@@ -4,7 +4,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { qid, action, comment, name } = req.body; // ✅ use req.body, not req.json()
+    const { qid, action, comment, name } = req.body;
 
     if (!qid || !action) {
       return res.status(400).json({ error: "Missing qid or action" });
@@ -20,18 +20,17 @@ export default async function handler(req, res) {
 
     // Step 2: build update map
     let updateMap = {
-      Acceptance_Status: action, // "Accepted" / "Negotiated" / "Denied"
+      Acceptance_Status: action,
       Client_Response: comment || null,
       Acknowledged_By: name || null,
     };
 
-    // expire token if accepted/denied
     if (action === "Accepted" || action === "Denied") {
       const now = new Date();
       const y = now.getFullYear();
       const m = String(now.getMonth() + 1).padStart(2, "0");
       const d = String(now.getDate()).padStart(2, "0");
-      updateMap.Acceptance_Token_Expires = `${y}-${m}-${d}`; // ✅ yyyy-MM-dd
+      updateMap.Acceptance_Token_Expires = `${y}-${m}-${d}`;
     }
 
     // Step 3: update Quote in CRM
@@ -49,8 +48,13 @@ export default async function handler(req, res) {
 
     const crmData = await crmResp.json();
 
-    // return action + payload + Zoho’s reply
-    return res.status(200).json({ ok: true, action, sent: updateMap, crmData });
+    // ✅ don’t assume data[0] exists; just return whole crmData
+    return res.status(200).json({
+      ok: true,
+      action,
+      sent: updateMap,
+      crmRaw: crmData
+    });
 
   } catch (err) {
     return res.status(500).json({ error: err.message });

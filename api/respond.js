@@ -20,7 +20,7 @@ export default async function handler(req, res) {
 
     // Step 2: build update map
     let updateMap = {
-      Acceptance_Status: action,
+      Acceptance_Status: action, // "Accepted" / "Negotiated" / "Denied"
       Client_Response: comment || null,
       Acknowledged_By: name || null,
     };
@@ -45,7 +45,7 @@ export default async function handler(req, res) {
       {
         method: "PUT",
         headers: {
-          "Authorization": `Zoho-oauthtoken ${accessToken}`,
+          Authorization: `Zoho-oauthtoken ${accessToken}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ data: [updateMap] }),
@@ -54,21 +54,23 @@ export default async function handler(req, res) {
 
     const crmData = await crmResp.json();
 
-    // Step 4: check Zoho response
-   const first = crmData.data && Array.isArray(crmData.data) ? crmData.data[0] : null;
-if (first && first.code === "SUCCESS") {
+    // Step 4: check Zoho response safely
+    const first =
+      crmData.data && Array.isArray(crmData.data) ? crmData.data[0] : null;
+
+    if (first && first.code === "SUCCESS") {
       return res.status(200).json({
         ok: true,
         message: `Quote updated as ${action}!`,
         sent: updateMap,
-        crmReply: first
+        crmReply: first,
       });
     } else {
       return res.status(400).json({
         ok: false,
         message: "Zoho did not accept the update",
         sent: updateMap,
-        crmRaw: crmData
+        crmRaw: crmData,
       });
     }
   } catch (err) {

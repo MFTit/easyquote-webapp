@@ -4,7 +4,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { qid, action, comment, name } = await req.json();
+    const { qid, action, comment, name } = req.body; // ✅ use req.body, not req.json()
 
     if (!qid || !action) {
       return res.status(400).json({ error: "Missing qid or action" });

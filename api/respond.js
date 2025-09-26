@@ -55,8 +55,8 @@ export default async function handler(req, res) {
     const crmData = await crmResp.json();
 
     // Step 4: check Zoho response
-    const first = crmData?.data?.[0];
-    if (first && first.code === "SUCCESS") {
+   const first = crmData.data && Array.isArray(crmData.data) ? crmData.data[0] : null;
+if (first && first.code === "SUCCESS") {
       return res.status(200).json({
         ok: true,
         message: `Quote updated as ${action}!`,

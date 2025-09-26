@@ -125,17 +125,17 @@
       el("valid").textContent = fmtDate(d.valid_till);
       el("status").innerHTML = `<span class="pill">${esc(d.status || "—")}</span>`;
 
-      // items table
-      const items = Array.isArray(d.products) ? d.products : [];
-      if(items.length === 0){
+      // ✅ FIXED items section
+      const items = d.products && Array.isArray(d.products) ? d.products : [];
+      if (items.length === 0) {
         el("items").innerHTML = "<div class='muted'>No items.</div>";
-      }else{
+      } else {
         let html = "<table><thead><tr><th>Product</th><th>Description</th><th>Qty</th><th>Price</th><th>Discount</th><th>Tax</th><th>Total</th></tr></thead><tbody>";
-        for(const it of items){
+        for (const it of items) {
           html += `<tr>
-            <td>${esc(it.product_name)}</td>
-            <td>${esc(it.description)}</td>
-            <td>${esc(it.quantity)}</td>
+            <td>${esc(it.product_name || "")}</td>
+            <td>${esc(it.description || "")}</td>
+            <td>${esc(it.quantity || 0)}</td>
             <td>${fmtMoney(it.list_price)}</td>
             <td>${fmtMoney(it.discount)}</td>
             <td>${fmtMoney(it.tax)}</td>

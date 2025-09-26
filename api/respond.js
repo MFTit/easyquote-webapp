@@ -47,12 +47,10 @@ export default async function handler(req, res) {
       }
     );
 
-    const crmData = await crmResp.json();
+        const crmData = await crmResp.json();
 
-    // 🔎 log Zoho response for debugging
-    console.log("Zoho CRM update response:", crmData);
+    return res.status(200).json({ ok: true, action, sent: updateMap, crmData });
 
-    return res.status(200).json({ ok: true, data: crmData });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }

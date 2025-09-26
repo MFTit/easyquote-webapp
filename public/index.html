@@ -93,6 +93,7 @@
 (function(){
   const qs = new URLSearchParams(location.search);
   const qid = qs.get("qid");
+  window.qid = qid; // 👈 expose to button functions
   const el = (id)=>document.getElementById(id);
   const fmtMoney = (n)=> typeof n === "number" ? n.toLocaleString(undefined,{maximumFractionDigits:2}) : (n||"—");
   const fmtDate = (s)=> s ? new Date(s).toLocaleDateString() : "—";

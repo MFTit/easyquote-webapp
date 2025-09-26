@@ -20,7 +20,7 @@ export default async function handler(req, res) {
 
     // Step 2: build update map
     let updateMap = {
-      Acceptance_Status: action,
+      Acceptance_Status: action, // value from button
       Client_Response: comment || null,
       Acknowledged_By: name || null,
     };
@@ -48,14 +48,23 @@ export default async function handler(req, res) {
 
     const crmData = await crmResp.json();
 
-    // ✅ don’t assume data[0] exists; just return whole crmData
-    return res.status(200).json({
-      ok: true,
-      action,
-      sent: updateMap,
-      crmRaw: crmData
-    });
-
+    // Step 4: check Zoho response
+    const first = crmData?.data?.[0];
+    if (first && first.code === "SUCCESS") {
+      return res.status(200).json({
+        ok: true,
+        message: `Quote updated as ${action}!`,
+        sent: updateMap,
+        crmReply: first
+      });
+    } else {
+      return res.status(400).json({
+        ok: false,
+        message: "Zoho did not accept the update",
+        sent: updateMap,
+        crmRaw: crmData
+      });
+    }
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }

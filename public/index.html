@@ -74,14 +74,17 @@
   </div>
 
   <div class="card">
-    <h3>Respond</h3>
-    <p class="muted">Buttons will be enabled in the next step.</p>
-    <div class="actions" style="display:flex; gap:8px; flex-wrap:wrap;">
-      <button>Accept</button>
-      <button>Negotiate</button>
-      <button>Deny</button>
-    </div>
+  <h3>Respond</h3>
+  <div style="margin-bottom:8px;">
+    <textarea id="comment" placeholder="Add comments here (optional)" rows="3" style="width:100%;"></textarea>
   </div>
+  <div style="display:flex; gap:8px; flex-wrap:wrap;">
+    <button onclick="sendAction('Accepted')">Accept</button>
+    <button onclick="sendAction('Negotiated')">Negotiate</button>
+    <button onclick="sendAction('Denied')">Deny</button>
+  </div>
+</div>
+
 
   <div id="msg" class="footer-note"></div>
 </div>

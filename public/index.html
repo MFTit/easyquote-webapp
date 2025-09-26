@@ -125,7 +125,7 @@
       el("valid").textContent = fmtDate(d.valid_till);
       el("status").innerHTML = `<span class="pill">${esc(d.status || "—")}</span>`;
 
-      // ✅ FIXED items section
+      // ✅ items safe handling
       const items = d.products && Array.isArray(d.products) ? d.products : [];
       if (items.length === 0) {
         el("items").innerHTML = "<div class='muted'>No items.</div>";
@@ -150,12 +150,13 @@
       el("totals").textContent = `Subtotal: ${fmtMoney(d.sub_total)}   |   Grand Total: ${fmtMoney(d.grand_total)}`;
       el("terms").innerHTML = d.terms ? esc(d.terms).replace(/\n/g,"<br>") : "<span class='muted'>No terms provided.</span>";
 
-      // status logic: hide buttons if already accepted/denied
-      if (d.status === "Accepted" || d.status === "Denied") {
+      // ✅ status logic
+      if (d.status === "Accepted" || d.status === "Denied" || d.status === "Discarded") {
         document.querySelector(".actions").style.display = "none";
-        const msg = d.status === "Accepted"
-          ? "✅ This quote has been accepted."
-          : "❌ This quote has been denied.";
+        let msg = "";
+        if (d.status === "Accepted") msg = "✅ This quote has been accepted.";
+        if (d.status === "Denied") msg = "❌ This quote has been denied.";
+        if (d.status === "Discarded") msg = "🚫 This quote has been discarded by the sales team.";
         el("msg").textContent = msg;
       }
 

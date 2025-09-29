@@ -19,20 +19,19 @@
       margin: auto;
       box-shadow: 0 4px 12px rgba(0,0,0,0.08);
       padding: 30px;
+      position: relative;
     }
 
     .header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      border-bottom: 2px solid #f0f0f0;
-      padding-bottom: 15px;
+      text-align: center;
       margin-bottom: 20px;
+      position: relative;
     }
 
     .logo {
-      height: 60px;
+      height: 80px;
+      display: block;
+      margin: auto;
     }
 
     h1 {
@@ -40,7 +39,18 @@
       color: #2c3e50;
       margin: 10px 0;
       font-size: 26px;
-      flex: 1;
+    }
+
+    .valid-till {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: #2980b9;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 500;
     }
 
     .status {
@@ -50,6 +60,7 @@
       font-size: 14px;
       display: inline-block;
       box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      margin-top: 6px;
     }
 
     .status.Accepted { background: #e9f9ee; color: #27ae60; }
@@ -60,21 +71,6 @@
 
     #details p {
       margin: 6px 0;
-    }
-
-    #details p b {
-      color: #555;
-      margin-right: 6px;
-    }
-
-    .highlight {
-      background: #27ae60;
-      color: white;
-      padding: 6px 12px;
-      border-radius: 8px;
-      font-weight: bold;
-      display: inline-block;
-      margin-top: 5px;
     }
 
     h3 {
@@ -95,13 +91,25 @@
 
     th, td {
       border: 1px solid #eee;
-      padding: 10px;
+      padding: 12px;
       text-align: left;
+      font-size: 15px;
     }
 
     th {
       background: #f9fafc;
       font-weight: 600;
+    }
+
+    .highlight {
+      background: #27ae60;
+      color: white;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-weight: bold;
+      display: inline-block;
+      margin-top: 15px;
+      font-size: 16px;
     }
 
     .actions {
@@ -140,9 +148,9 @@
     /* Responsive Layout */
     @media (max-width: 768px) {
       .quote-box { padding: 20px; }
-      h1 { font-size: 22px; text-align: center; }
-      .header { flex-direction: column; align-items: center; }
-      .logo { height: 50px; }
+      h1 { font-size: 22px; }
+      th, td { font-size: 14px; }
+      td { word-break: break-word; }
       table, thead, tbody, th, td, tr { display: block; width: 100%; }
       th { display: none; }
       tr { margin-bottom: 12px; border-bottom: 1px solid #eee; }
@@ -163,11 +171,14 @@
   <div class="quote-box">
     <div class="header">
       <img src="/logo.png" alt="Company Logo" class="logo">
+      <div class="valid-till" id="validTill"></div>
       <h1 id="title">Loading Quote...</h1>
+      <p id="subtitle"></p>
     </div>
-    <p id="subtitle"></p>
     <div id="details"></div>
+    <div id="deal"></div>
     <div id="items"></div>
+    <div id="grandTotal"></div>
     <div id="terms"></div>
     <div class="actions" id="actions"></div>
   </div>
@@ -205,13 +216,16 @@
       statusHtml += "</span>";
       el("subtitle").innerHTML = `${q.subject} | ${statusHtml}`;
 
+      // Valid Till top right
+      el("validTill").innerText = q.valid_till ? "Valid Till: " + q.valid_till : "";
+
+      // Remove Owner, keep Contact only
       el("details").innerHTML = `
-        <p><b>Deal:</b> ${q.deal_name || ""}</p>
         <p><b>Contact:</b> ${q.contact_name || ""}</p>
-        <p><b>Owner:</b> ${q.owner || ""}</p>
-        <p><b>Valid Till:</b> ${q.valid_till || ""}</p>
-        <p><b>Grand Total:</b> <span class="highlight">${q.grand_total}</span></p>
       `;
+
+      // Deal before Items
+      el("deal").innerHTML = q.deal_name ? `<h3>Deal</h3><p>${q.deal_name}</p>` : "";
 
       let itemsHtml = "<h3>Items</h3><table><tr><th>Product</th><th>Qty</th><th>Price</th><th>Total</th></tr>";
       (q.products || []).forEach(p => {
@@ -219,6 +233,9 @@
       });
       itemsHtml += "</table>";
       el("items").innerHTML = itemsHtml;
+
+      // Grand Total after table
+      el("grandTotal").innerHTML = q.grand_total ? `<p><span class="highlight">Grand Total: ${q.grand_total}</span></p>` : "";
 
       el("terms").innerHTML = "<h3>Terms & Conditions</h3><p>" + (q.terms || "None") + "</p>";
 

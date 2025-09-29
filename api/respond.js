@@ -6,11 +6,11 @@ export default async function handler(req, res) {
   try {
     const { qid, token, action, comment, name } = req.body;
 
-    if (!qid || !action || !token) {
-      return res.status(400).json({ error: "Missing qid, action, or token" });
+    if (!qid || !action) {
+      return res.status(400).json({ error: "Missing qid or action" });
     }
 
-    // Step 1: refresh access token
+    // 🔑 Step 1: refresh access token
     const tokenResp = await fetch(
       `${process.env.ZOHO_ACCOUNTS_URL}/oauth/v2/token?refresh_token=${process.env.ZOHO_REFRESH_TOKEN}&client_id=${process.env.ZOHO_CLIENT_ID}&client_secret=${process.env.ZOHO_CLIENT_SECRET}&grant_type=refresh_token`,
       { method: "POST" }
@@ -18,19 +18,19 @@ export default async function handler(req, res) {
     const tokenData = await tokenResp.json();
     const accessToken = tokenData.access_token;
 
-    // Step 2: build update map
+    // 🔑 Step 2: build update map
     let updateMap = {
-      Acceptance_Status: action, // "Accepted" / "Negotiated" / "Denied"
+      Acceptance_Status: action,            // overwrite each time
       Client_Response: comment || null,
       Acknowledged_By: name || null,
     };
 
-    // Expire immediately if Accepted/Denied
+    // If Accepted or Denied → expire token
     if (action === "Accepted" || action === "Denied") {
       updateMap.Acceptance_Token_Expires = new Date().toISOString();
     }
 
-    // Step 3: update Quote in CRM
+    // 🔑 Step 3: update Quote in CRM
     const crmResp = await fetch(
       `${process.env.ZOHO_API_BASE}/crm/v2/Quotes/${qid}`,
       {
@@ -45,11 +45,18 @@ export default async function handler(req, res) {
 
     const crmData = await crmResp.json();
 
-    if (crmData.data && crmData.data[0].code === "SUCCESS") {
-      return res.status(200).json({ ok: true, action, sent: updateMap });
-    } else {
-      return res.status(400).json({ ok: false, message: "Zoho did not accept the update", crmRaw: crmData });
+    // Success check
+    if (!crmData.data || crmData.data[0].status === "error") {
+      return res.status(400).json({
+        ok: false,
+        message: "Zoho did not accept the update",
+        sent: updateMap,
+        crmRaw: crmData,
+      });
     }
+
+    return res.status(200).json({ ok: true, action, sent: updateMap });
+
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }

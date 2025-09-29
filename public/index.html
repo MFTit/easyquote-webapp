@@ -51,7 +51,13 @@
 
       const q = data.data;
       el("title").innerText = "Quotation #" + q.quote_number;
-      el("subtitle").innerText = q.subject + " | Status: " + (q.status || "Pending");
+
+      // Show status
+      let statusLine = q.subject + " | Status: " + (q.status || "Pending");
+      if (q.status === "Accepted" || q.status === "Denied") {
+        if (q.accepted_on) statusLine += " on " + q.accepted_on;
+      }
+      el("subtitle").innerText = statusLine;
 
       el("details").innerHTML = `
         <p><b>Deal:</b> ${q.deal_name || ""}</p>
@@ -74,12 +80,12 @@
       actions.innerHTML = "";
 
       if (q.status === "Accepted" || q.status === "Denied" || q.status === "Discarded") {
-        actions.innerHTML = `<p class='success'>This quote has already been ${q.status}.</p>`;
+        actions.innerHTML = `<p class='success'>This quote has been ${q.status}${q.accepted_on ? " on " + q.accepted_on : ""}.</p>`;
         return;
       }
 
       // Otherwise, show action buttons
-      ["Accept", "Negotiate", "Deny"].forEach(act => {
+      ["Accept", "Negotiate", "Denied"].forEach(act => {
         const btn = document.createElement("button");
         btn.innerText = act;
         btn.onclick = () => doRespond(act);

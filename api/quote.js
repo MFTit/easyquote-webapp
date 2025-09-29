@@ -22,6 +22,8 @@ export default async function handler(req, res) {
       }
     );
     const crmData = await crmResp.json();
+    console.log("CRM Raw:", crmData);
+
     const rec = crmData.data && crmData.data[0];
 
     if (!rec) {

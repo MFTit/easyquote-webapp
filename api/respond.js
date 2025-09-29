@@ -19,16 +19,28 @@ export default async function handler(req, res) {
     const accessToken = tokenData.access_token;
 
     // 🔑 Step 2: build update map
-    let updateMap = {
-      Acceptance_Status: action,            // overwrite each time
-      Client_Response: comment || null,
-      Acknowledged_By: name || null,
-    };
+   let updateMap = {
+  Acceptance_Status: action,  // force overwrite
+  Client_Response: comment || null,
+  Acknowledged_By: name || null,
+};
 
-    // If Accepted or Denied → expire token
-    if (action === "Accepted" || action === "Denied") {
-      updateMap.Acceptance_Token_Expires = new Date().toISOString();
-    }
+// Expire token if accepted/denied
+if (action === "Accepted" || action === "Denied") {
+  function formatZohoDate(d) {
+    const pad = n => String(n).padStart(2, "0");
+    return (
+      d.getFullYear() +
+      "-" + pad(d.getMonth() + 1) +
+      "-" + pad(d.getDate()) +
+      "T" + pad(d.getHours()) +
+      ":" + pad(d.getMinutes()) +
+      ":" + pad(d.getSeconds())
+    );
+  }
+  updateMap.Acceptance_Token_Expires = formatZohoDate(new Date());
+}
+
 
     // 🔑 Step 3: update Quote in CRM
     const crmResp = await fetch(

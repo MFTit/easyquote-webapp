@@ -36,9 +36,11 @@ export default async function handler(req, res) {
     let accepted_on = null;
     if (rec.Acceptance_Token_Expires) {
       const expiry = new Date(rec.Acceptance_Token_Expires);
+
       if (rec.Acceptance_Status === "Accepted" || rec.Acceptance_Status === "Denied") {
-        // If accepted/denied → use expiry as decision timestamp
-        accepted_on = expiry.toISOString();
+        // Format datetime to human-readable
+        const opts = { year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" };
+        accepted_on = expiry.toLocaleString("en-GB", opts).replace(",", "");
       } else {
         // If pending but expired → block
         if (expiry < new Date()) {
@@ -59,7 +61,7 @@ export default async function handler(req, res) {
         owner: rec.Owner?.name,
         valid_till: rec.Valid_Till,
         status: rec.Acceptance_Status,
-        accepted_on, // <-- NEW FIELD
+        accepted_on, // ✅ now human-readable
         grand_total: rec.Grand_Total,
         sub_total: rec.Sub_Total,
         terms: rec.Terms_and_Conditions,

@@ -65,7 +65,7 @@
     const qid = qs.get("qid");
     const token = qs.get("token");
 
-    function el(id) { return document.getElementById(id); }
+    const el = (id) => document.getElementById(id);
 
     async function loadQuote() {
       if (!qid || !token) {
@@ -84,13 +84,15 @@
       }
 
       const q = data.data;
+      const status = (q.status || "Pending").trim();
+
       el("title").innerText = "Quotation #" + q.quote_number;
 
       // Status badge
-      let statusHtml = `<span class="status ${q.status || "Pending"}">${q.status || "Pending"}`;
+      let statusHtml = `<span class="status ${status}">${status}`;
       if (q.accepted_on) statusHtml += ` on ${q.accepted_on}`;
       statusHtml += "</span>";
-      el("subtitle").innerHTML = q.subject + " | " + statusHtml;
+      el("subtitle").innerHTML = `${q.subject} | ${statusHtml}`;
 
       el("details").innerHTML = `
         <p><b>Deal:</b> ${q.deal_name || ""}</p>
@@ -101,8 +103,8 @@
       `;
 
       let itemsHtml = "<h3>Items</h3><table><tr><th>Product</th><th>Qty</th><th>Price</th><th>Total</th></tr>";
-      q.products.forEach(p => {
-        itemsHtml += `<tr><td>${p.product_name}</td><td>${p.quantity}</td><td>${p.list_price}</td><td>${p.total}</td></tr>`;
+      (q.products || []).forEach(p => {
+        itemsHtml += `<tr><td>${p.product_name || ""}</td><td>${p.quantity ?? ""}</td><td>${p.list_price ?? ""}</td><td>${p.total ?? ""}</td></tr>`;
       });
       itemsHtml += "</table>";
       el("items").innerHTML = itemsHtml;
@@ -113,16 +115,22 @@
       actions.innerHTML = "";
 
       // ✅ Hide buttons if Accepted/Denied/Discarded
-      if (["Accepted", "Denied", "Discarded"].includes(q.status)) {
-        actions.innerHTML = `<p class='success'>This quote has been ${q.status}${q.accepted_on ? " on " + q.accepted_on : ""}.</p>`;
+      if (["Accepted", "Denied", "Discarded"].includes(status)) {
+        actions.innerHTML = `<p class='success'>This quote has been ${status}${q.accepted_on ? " on " + q.accepted_on : ""}.</p>`;
         return;
       }
 
-      // Otherwise, show action buttons
-      ["Accept", "Negotiate", "Denied"].forEach(act => {
+      // Otherwise, show action buttons — map labels → canonical values
+      const buttons = [
+        { label: "Accept", value: "Accepted" },
+        { label: "Negotiate", value: "Negotiated" },
+        { label: "Denied", value: "Denied" },
+      ];
+
+      buttons.forEach(({label, value}) => {
         const btn = document.createElement("button");
-        btn.innerText = act;
-        btn.onclick = () => doRespond(act);
+        btn.innerText = label;
+        btn.onclick = () => doRespond(value);
         actions.appendChild(btn);
       });
     }
@@ -139,7 +147,7 @@
 
       const data = await r.json();
       if (data.ok) {
-        alert("Quote updated as " + action + "!");
+        alert(`Quote updated as ${action}!`);
         location.reload();
       } else {
         alert("Failed: " + JSON.stringify(data));

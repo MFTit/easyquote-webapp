@@ -1,195 +1,112 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
+  <meta charset="UTF-8">
   <title>EasyQuote</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <style>
-    body { font-family: system-ui, Arial, sans-serif; margin: 24px; color:#111827; }
-    .wrap { max-width: 960px; margin: 0 auto; }
-    .card { border:1px solid #e5e7eb; border-radius:12px; padding:16px; margin:16px 0; background:#fff; }
-    h1,h2,h3 { margin: 0 0 8px 0; }
-    .muted { color:#6b7280; font-size:14px; }
-    table { border-collapse: collapse; width: 100%; }
-    th, td { border: 1px solid #e5e7eb; padding: 8px; text-align: left; vertical-align: top; }
-    th { background:#f9fafb; }
-    .grid { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
-    @media (max-width: 720px){ .grid { grid-template-columns: 1fr; } }
-    .total { font-weight: 700; font-size: 18px; }
-    .error { color:#b91c1c; }
-    .pill { display:inline-block; padding:4px 8px; border-radius:999px; background:#eef2ff; color:#3730a3; font-size:12px; }
-    .footer-note { font-size:12px; color:#6b7280; text-align:center; margin-top:12px; }
-    textarea { width:100%; padding:8px; border:1px solid #d1d5db; border-radius:8px; }
-    button { padding:8px 16px; border-radius:8px; border:none; cursor:pointer; background:#2563eb; color:#fff; }
-    button:hover { background:#1d4ed8; }
-    .actions button:nth-child(2){ background:#f59e0b; }
-    .actions button:nth-child(2):hover{ background:#d97706; }
-    .actions button:nth-child(3){ background:#dc2626; }
-    .actions button:nth-child(3):hover{ background:#b91c1c; }
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .quote-box { border: 1px solid #ccc; padding: 20px; border-radius: 10px; max-width: 800px; margin: auto; }
+    h1 { color: #333; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background: #f4f4f4; }
+    .actions { margin-top: 20px; text-align: center; }
+    button { margin: 5px; padding: 10px 20px; font-size: 16px; }
+    .error { color: red; font-weight: bold; }
+    .success { color: green; font-weight: bold; }
   </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="card">
-    <h1 id="title">Quotation</h1>
-    <div class="muted" id="subtitle">Loading…</div>
+  <div class="quote-box">
+    <h1 id="title">Loading Quote...</h1>
+    <p id="subtitle"></p>
+    <div id="details"></div>
+    <div id="items"></div>
+    <div id="terms"></div>
+    <div class="actions" id="actions"></div>
   </div>
 
-  <div class="card">
-    <div class="grid">
-      <div>
-        <div class="muted">Quote Number</div>
-        <div id="qno">—</div>
-      </div>
-      <div>
-        <div class="muted">Subject</div>
-        <div id="subject">—</div>
-      </div>
-      <div>
-        <div class="muted">Deal</div>
-        <div id="deal">—</div>
-      </div>
-      <div>
-        <div class="muted">Contact</div>
-        <div id="contact">—</div>
-      </div>
-      <div>
-        <div class="muted">Valid Till</div>
-        <div id="valid">—</div>
-      </div>
-      <div>
-        <div class="muted">Status</div>
-        <div id="status"><span class="pill">—</span></div>
-      </div>
-    </div>
-  </div>
+  <script>
+    const qs = new URLSearchParams(window.location.search);
+    const qid = qs.get("qid");
+    const token = qs.get("token");
 
-  <div class="card">
-    <h3>Items</h3>
-    <div id="items">Loading…</div>
-  </div>
+    function el(id) { return document.getElementById(id); }
 
-  <div class="card">
-    <h3>Totals</h3>
-    <div id="totals" class="total">—</div>
-  </div>
+    async function loadQuote() {
+      if (!qid || !token) {
+        el("title").innerText = "Invalid Link";
+        el("subtitle").innerHTML = "<span class='error'>Missing qid or token in URL.</span>";
+        return;
+      }
 
-  <div class="card">
-    <h3>Terms &amp; Conditions</h3>
-    <div id="terms" class="muted">No terms provided.</div>
-  </div>
+      const r = await fetch(`/api/quote?qid=${encodeURIComponent(qid)}&token=${encodeURIComponent(token)}`);
+      const data = await r.json();
 
-  <div class="card respond-card">
-    <h3>Respond</h3>
-    <div style="margin-bottom:8px;">
-      <textarea id="comment" placeholder="Add comments here (optional)" rows="3"></textarea>
-    </div>
-    <div class="actions" style="display:flex; gap:8px; flex-wrap:wrap;">
-      <button onclick="sendAction('Accepted')">Accept</button>
-      <button onclick="sendAction('Negotiated')">Negotiate</button>
-      <button onclick="sendAction('Denied')">Deny</button>
-    </div>
-  </div>
+      if (!data.ok) {
+        el("title").innerText = "Quote Error";
+        el("subtitle").innerHTML = `<span class='error'>${data.error}</span>`;
+        return;
+      }
 
-  <div id="msg" class="footer-note"></div>
-</div>
+      const q = data.data;
+      el("title").innerText = "Quotation #" + q.quote_number;
+      el("subtitle").innerText = q.subject + " | Status: " + (q.status || "Pending");
 
-<script>
-(function(){
-  const qs = new URLSearchParams(location.search);
-  const qid = qs.get("qid");
-  window.qid = qid; // expose globally for sendAction
-  const el = (id)=>document.getElementById(id);
-  const fmtMoney = (n)=> typeof n === "number" ? n.toLocaleString(undefined,{maximumFractionDigits:2}) : (n||"—");
-  const fmtDate = (s)=> s ? new Date(s).toLocaleDateString() : "—";
-  const esc = (s)=> (s ?? "").toString().replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
+      el("details").innerHTML = `
+        <p><b>Deal:</b> ${q.deal_name || ""}</p>
+        <p><b>Contact:</b> ${q.contact_name || ""}</p>
+        <p><b>Owner:</b> ${q.owner || ""}</p>
+        <p><b>Valid Till:</b> ${q.valid_till || ""}</p>
+        <p><b>Grand Total:</b> ${q.grand_total}</p>
+      `;
 
-if(!qid || !token){
-  el("subtitle").innerHTML = "<span class='error'>Missing qid or token in URL.</span>";
-  return;
-}
+      let itemsHtml = "<h3>Items</h3><table><tr><th>Product</th><th>Qty</th><th>Price</th><th>Total</th></tr>";
+      q.products.forEach(p => {
+        itemsHtml += `<tr><td>${p.product_name}</td><td>${p.quantity}</td><td>${p.list_price}</td><td>${p.total}</td></tr>`;
+      });
+      itemsHtml += "</table>";
+      el("items").innerHTML = itemsHtml;
 
-  async function loadQuote(){
-    try{
-     const token = qs.get("token");
-const r = await fetch(`/api/quote?qid=${encodeURIComponent(qid)}&token=${encodeURIComponent(token)}`);
+      el("terms").innerHTML = "<h3>Terms & Conditions</h3><p>" + (q.terms || "None") + "</p>";
 
-      const j = await r.json();
-      if(!j.ok){ throw new Error(j.error || "Unable to load quote"); }
-      const d = j.data;
+      const actions = el("actions");
+      actions.innerHTML = "";
 
-      el("title").textContent = "Quotation";
-      el("subtitle").textContent = `Quote ID: ${d.id}`;
-      el("qno").textContent = d.quote_number || "—";
-      el("subject").textContent = d.subject || "—";
-      el("deal").textContent = d.deal_name || "—";
-      el("contact").textContent = d.contact_name || "—";
-      el("valid").textContent = fmtDate(d.valid_till);
-      el("status").innerHTML = `<span class="pill">${esc(d.status || "—")}</span>`;
+      if (q.status === "Accepted" || q.status === "Denied" || q.status === "Discarded") {
+        actions.innerHTML = `<p class='success'>This quote has already been ${q.status}.</p>`;
+        return;
+      }
 
-      // ✅ items safe handling
-      const items = d.products && Array.isArray(d.products) ? d.products : [];
-      if (items.length === 0) {
-        el("items").innerHTML = "<div class='muted'>No items.</div>";
+      // Otherwise, show action buttons
+      ["Accept", "Negotiate", "Deny"].forEach(act => {
+        const btn = document.createElement("button");
+        btn.innerText = act;
+        btn.onclick = () => doRespond(act);
+        actions.appendChild(btn);
+      });
+    }
+
+    async function doRespond(action) {
+      const comment = prompt("Enter comment (optional):") || "";
+      const name = prompt("Please enter your name:") || "";
+
+      const r = await fetch("/api/respond", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ qid, token, action, comment, name })
+      });
+
+      const data = await r.json();
+      if (data.ok) {
+        alert("Quote updated as " + action + "!");
+        location.reload();
       } else {
-        let html = "<table><thead><tr><th>Product</th><th>Description</th><th>Qty</th><th>Price</th><th>Discount</th><th>Tax</th><th>Total</th></tr></thead><tbody>";
-        for (const it of items) {
-          html += `<tr>
-            <td>${esc(it.product_name || "")}</td>
-            <td>${esc(it.description || "")}</td>
-            <td>${esc(it.quantity || 0)}</td>
-            <td>${fmtMoney(it.list_price)}</td>
-            <td>${fmtMoney(it.discount)}</td>
-            <td>${fmtMoney(it.tax)}</td>
-            <td>${fmtMoney(it.total)}</td>
-          </tr>`;
-        }
-        html += "</tbody></table>";
-        el("items").innerHTML = html;
+        alert("Failed: " + JSON.stringify(data));
       }
-
-      // totals & terms
-      el("totals").textContent = `Subtotal: ${fmtMoney(d.sub_total)}   |   Grand Total: ${fmtMoney(d.grand_total)}`;
-      el("terms").innerHTML = d.terms ? esc(d.terms).replace(/\n/g,"<br>") : "<span class='muted'>No terms provided.</span>";
-
-      // ✅ status logic
-      if (d.status === "Accepted" || d.status === "Denied" || d.status === "Discarded") {
-        document.querySelector(".actions").style.display = "none";
-        let msg = "";
-        if (d.status === "Accepted") msg = "✅ This quote has been accepted.";
-        if (d.status === "Denied") msg = "❌ This quote has been denied.";
-        if (d.status === "Discarded") msg = "🚫 This quote has been discarded by the sales team.";
-        el("msg").textContent = msg;
-      }
-
-    }catch(err){
-      el("subtitle").innerHTML = `<span class='error'>${err.message}</span>`;
     }
-  }
 
-  loadQuote();
-})();
-
-async function sendAction(action){
-  try{
-    const name = prompt("Please enter your name:") || "";
-    const comment = document.getElementById("comment").value;
-    const resp = await fetch("/api/respond", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ qid, action, comment, name })
-    });
-    const data = await resp.json();
-    if(data.ok){
-      alert(data.message || `Quote updated as ${action}!`);
-      location.reload();
-    }else{
-      alert("Failed: " + (data.message || JSON.stringify(data)));
-    }
-  }catch(err){
-    alert("Error: " + err.message);
-  }
-}
-</script>
+    loadQuote();
+  </script>
 </body>
 </html>

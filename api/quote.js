@@ -1,5 +1,5 @@
 export default async function handler(req, res) {
-  const { qid, token } = req.query;
+  const { qid, token, debug } = req.query;
   if (!qid || !token) {
     return res.status(400).json({ ok: false, error: "Missing qid or token" });
   }
@@ -15,28 +15,44 @@ export default async function handler(req, res) {
 
     // Step 2: fetch Quote record
     const crmResp = await fetch(
-      `${process.env.ZOHO_API_BASE}/crm/v2/Quotes/${qid}`,
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Zoho-oauthtoken ${accessToken}`,
-        },
-      }
+      `${process.env.ZOHO_API_BASE}/crm/v2/Quotes/${encodeURIComponent(qid)}`,
+      { headers: { Authorization: `Zoho-oauthtoken ${accessToken}` } }
     );
-
     const crmData = await crmResp.json();
     const rec = crmData?.data?.[0];
     if (!rec) {
-      return res.status(404).json({ ok: false, error: "Quote not found", crmRaw: crmData });
+      return res.status(404).json({
+        ok: false,
+        error: "Quote not found or Zoho error",
+        crmRaw: crmData
+      });
     }
 
-    // Step 3: verify token
-    if (rec.Acceptance_Token !== token) {
-      return res.status(403).json({ ok: false, error: "Invalid or expired token" });
+    // Step 3: verify token (trim both sides)
+    const supplied = decodeURIComponent(token || "").trim();
+    const stored = String(rec.Acceptance_Token || "").trim();
+
+    const mask = (s) => (s && s.length >= 8) ? `${s.slice(0,4)}…${s.slice(-4)}` : s;
+    if (!stored) {
+      const dbg = debug === "1" ? { supplied: mask(supplied), stored: mask(stored) } : undefined;
+      return res.status(403).json({ ok: false, error: "Invalid or expired token", ...(dbg ? { debug: dbg } : {}) });
+    }
+    if (stored !== supplied) {
+      const dbg = debug === "1" ? { supplied: mask(supplied), stored: mask(stored) } : undefined;
+      return res.status(403).json({ ok: false, error: "Invalid or expired token", ...(dbg ? { debug: dbg } : {}) });
     }
 
-    // Step 4: transform response
-    res.status(200).json({
+    // Step 4: verify expiry (if set)
+    if (rec.Acceptance_Token_Expires) {
+      const expiry = new Date(rec.Acceptance_Token_Expires);
+      const now = new Date();
+      if (expiry < now) {
+        return res.status(403).json({ ok: false, error: "This link has expired" });
+      }
+    }
+
+    // Step 5: transform response
+    return res.status(200).json({
       ok: true,
       data: {
         id: rec.id,
@@ -64,6 +80,6 @@ export default async function handler(req, res) {
       },
     });
   } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
+    return res.status(500).json({ ok: false, error: err.message });
   }
 }

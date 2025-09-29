@@ -1,5 +1,5 @@
 export default async function handler(req, res) {
-  const { qid, token, debug } = req.query;
+  const { qid, token } = req.query;
   if (!qid || !token) {
     return res.status(400).json({ ok: false, error: "Missing qid or token" });
   }
@@ -15,44 +15,40 @@ export default async function handler(req, res) {
 
     // Step 2: fetch Quote record
     const crmResp = await fetch(
-      `${process.env.ZOHO_API_BASE}/crm/v2/Quotes/${encodeURIComponent(qid)}`,
-      { headers: { Authorization: `Zoho-oauthtoken ${accessToken}` } }
+      `${process.env.ZOHO_API_BASE}/crm/v2/Quotes/${qid}`,
+      {
+        method: "GET",
+        headers: { Authorization: `Zoho-oauthtoken ${accessToken}` },
+      }
     );
     const crmData = await crmResp.json();
     const rec = crmData?.data?.[0];
     if (!rec) {
-      return res.status(404).json({
-        ok: false,
-        error: "Quote not found or Zoho error",
-        crmRaw: crmData
-      });
+      return res.status(404).json({ ok: false, error: "Quote not found", crmRaw: crmData });
     }
 
-    // Step 3: verify token (trim both sides)
-    const supplied = decodeURIComponent(token || "").trim();
-    const stored = String(rec.Acceptance_Token || "").trim();
-
-    const mask = (s) => (s && s.length >= 8) ? `${s.slice(0,4)}…${s.slice(-4)}` : s;
-    if (!stored) {
-      const dbg = debug === "1" ? { supplied: mask(supplied), stored: mask(stored) } : undefined;
-      return res.status(403).json({ ok: false, error: "Invalid or expired token", ...(dbg ? { debug: dbg } : {}) });
-    }
-    if (stored !== supplied) {
-      const dbg = debug === "1" ? { supplied: mask(supplied), stored: mask(stored) } : undefined;
-      return res.status(403).json({ ok: false, error: "Invalid or expired token", ...(dbg ? { debug: dbg } : {}) });
+    // Step 3: verify token
+    if (rec.Acceptance_Token !== token) {
+      return res.status(403).json({ ok: false, error: "Invalid or expired token" });
     }
 
     // Step 4: verify expiry (if set)
+    let accepted_on = null;
     if (rec.Acceptance_Token_Expires) {
       const expiry = new Date(rec.Acceptance_Token_Expires);
-      const now = new Date();
-      if (expiry < now) {
-        return res.status(403).json({ ok: false, error: "This link has expired" });
+      if (rec.Acceptance_Status === "Accepted" || rec.Acceptance_Status === "Denied") {
+        // If accepted/denied → use expiry as decision timestamp
+        accepted_on = expiry.toISOString();
+      } else {
+        // If pending but expired → block
+        if (expiry < new Date()) {
+          return res.status(403).json({ ok: false, error: "This link has expired" });
+        }
       }
     }
 
     // Step 5: transform response
-    return res.status(200).json({
+    res.status(200).json({
       ok: true,
       data: {
         id: rec.id,
@@ -63,6 +59,7 @@ export default async function handler(req, res) {
         owner: rec.Owner?.name,
         valid_till: rec.Valid_Till,
         status: rec.Acceptance_Status,
+        accepted_on, // <-- NEW FIELD
         grand_total: rec.Grand_Total,
         sub_total: rec.Sub_Total,
         terms: rec.Terms_and_Conditions,
@@ -80,6 +77,6 @@ export default async function handler(req, res) {
       },
     });
   } catch (err) {
-    return res.status(500).json({ ok: false, error: err.message });
+    res.status(500).json({ ok: false, error: err.message });
   }
 }

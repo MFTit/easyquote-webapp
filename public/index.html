@@ -4,21 +4,55 @@
   <meta charset="UTF-8">
   <title>EasyQuote</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    .quote-box { border: 1px solid #ccc; padding: 20px; border-radius: 10px; max-width: 800px; margin: auto; }
-    h1 { color: #333; }
+    body { font-family: Arial, sans-serif; margin: 20px; background: #f9f9f9; }
+    .quote-box { background: #fff; border: 1px solid #ccc; padding: 20px; border-radius: 10px; max-width: 800px; margin: auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+    .logo { height: 60px; margin-bottom: 10px; }
+    h1 { color: #333; margin: 10px 0; font-size: 24px; flex: 1; }
+    .status { font-weight: bold; padding: 4px 8px; border-radius: 5px; }
+    .status.Accepted { background: #d4edda; color: #155724; }
+    .status.Denied { background: #f8d7da; color: #721c24; }
+    .status.Negotiated { background: #fff3cd; color: #856404; }
+    .status.Pending { background: #cce5ff; color: #004085; }
+    .status.Discarded { background: #e2e3e5; color: #383d41; }
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
     th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
     th { background: #f4f4f4; }
     .actions { margin-top: 20px; text-align: center; }
-    button { margin: 5px; padding: 10px 20px; font-size: 16px; }
+    button { margin: 5px; padding: 10px 20px; font-size: 16px; cursor: pointer; border: none; border-radius: 5px; background: #007bff; color: #fff; }
+    button:hover { background: #0056b3; }
     .error { color: red; font-weight: bold; }
     .success { color: green; font-weight: bold; }
+
+    /* Responsive Layout */
+    @media (max-width: 768px) {
+      body { margin: 10px; }
+      .quote-box { padding: 15px; }
+      h1 { font-size: 20px; text-align: center; }
+      .header { flex-direction: column; align-items: center; }
+      .logo { height: 50px; }
+      table, thead, tbody, th, td, tr { display: block; width: 100%; }
+      th { display: none; }
+      tr { margin-bottom: 10px; }
+      td { border: none; padding: 6px 0; }
+      td::before {
+        font-weight: bold;
+        display: inline-block;
+        width: 120px;
+      }
+      td:nth-of-type(1)::before { content: "Product: "; }
+      td:nth-of-type(2)::before { content: "Quantity: "; }
+      td:nth-of-type(3)::before { content: "Price: "; }
+      td:nth-of-type(4)::before { content: "Total: "; }
+    }
   </style>
 </head>
 <body>
   <div class="quote-box">
-    <h1 id="title">Loading Quote...</h1>
+    <div class="header">
+      <img src="/logo.png" alt="Company Logo" class="logo">
+      <h1 id="title">Loading Quote...</h1>
+    </div>
     <p id="subtitle"></p>
     <div id="details"></div>
     <div id="items"></div>
@@ -52,12 +86,11 @@
       const q = data.data;
       el("title").innerText = "Quotation #" + q.quote_number;
 
-      // Show status
-      let statusLine = q.subject + " | Status: " + (q.status || "Pending");
-      if (q.status === "Accepted" || q.status === "Denied") {
-        if (q.accepted_on) statusLine += " on " + q.accepted_on;
-      }
-      el("subtitle").innerText = statusLine;
+      // Status badge
+      let statusHtml = `<span class="status ${q.status || "Pending"}">${q.status || "Pending"}`;
+      if (q.accepted_on) statusHtml += ` on ${q.accepted_on}`;
+      statusHtml += "</span>";
+      el("subtitle").innerHTML = q.subject + " | " + statusHtml;
 
       el("details").innerHTML = `
         <p><b>Deal:</b> ${q.deal_name || ""}</p>
@@ -79,7 +112,7 @@
       const actions = el("actions");
       actions.innerHTML = "";
 
-      if (q.status === "Accepted" || q.status === "Denied" || q.status === "Discarded") {
+      if (["Accepted", "Denied", "Discarded"].includes(q.status)) {
         actions.innerHTML = `<p class='success'>This quote has been ${q.status}${q.accepted_on ? " on " + q.accepted_on : ""}.</p>`;
         return;
       }

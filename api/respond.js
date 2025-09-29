@@ -4,10 +4,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { qid, action, comment, name } = req.body;
+    const { qid, token, action, comment, name } = req.body;
 
-    if (!qid || !action) {
-      return res.status(400).json({ error: "Missing qid or action" });
+    if (!qid || !action || !token) {
+      return res.status(400).json({ error: "Missing qid, action, or token" });
     }
 
     // Step 1: refresh access token
@@ -25,18 +25,9 @@ export default async function handler(req, res) {
       Acknowledged_By: name || null,
     };
 
-    // expire token if accepted/denied → proper DateTime format with offset
+    // Expire immediately if Accepted/Denied
     if (action === "Accepted" || action === "Denied") {
-      const now = new Date();
-      const tzOffset = -now.getTimezoneOffset(); // in minutes
-      const sign = tzOffset >= 0 ? "+" : "-";
-      const pad = (n) => String(Math.floor(Math.abs(n))).padStart(2, "0");
-      const hh = pad(tzOffset / 60);
-      const mm = pad(tzOffset % 60);
-      const offset = `${sign}${hh}:${mm}`;
-
-      const formatted = now.toISOString().split(".")[0] + offset;
-      updateMap.Acceptance_Token_Expires = formatted;
+      updateMap.Acceptance_Token_Expires = new Date().toISOString();
     }
 
     // Step 3: update Quote in CRM
@@ -45,7 +36,7 @@ export default async function handler(req, res) {
       {
         method: "PUT",
         headers: {
-          Authorization: `Zoho-oauthtoken ${accessToken}`,
+          "Authorization": `Zoho-oauthtoken ${accessToken}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ data: [updateMap] }),
@@ -54,24 +45,10 @@ export default async function handler(req, res) {
 
     const crmData = await crmResp.json();
 
-    // Step 4: check Zoho response safely
-    const first =
-      crmData.data && Array.isArray(crmData.data) ? crmData.data[0] : null;
-
-    if (first && first.code === "SUCCESS") {
-      return res.status(200).json({
-        ok: true,
-        message: `Quote updated as ${action}!`,
-        sent: updateMap,
-        crmReply: first,
-      });
+    if (crmData.data && crmData.data[0].code === "SUCCESS") {
+      return res.status(200).json({ ok: true, action, sent: updateMap });
     } else {
-      return res.status(400).json({
-        ok: false,
-        message: "Zoho did not accept the update",
-        sent: updateMap,
-        crmRaw: crmData,
-      });
+      return res.status(400).json({ ok: false, message: "Zoho did not accept the update", crmRaw: crmData });
     }
   } catch (err) {
     return res.status(500).json({ error: err.message });

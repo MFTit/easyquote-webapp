@@ -1,7 +1,7 @@
 export default async function handler(req, res) {
-  const { qid } = req.query;
-  if (!qid) {
-    return res.status(400).json({ ok: false, error: "Missing qid" });
+  const { qid, token } = req.query;
+  if (!qid || !token) {
+    return res.status(400).json({ ok: false, error: "Missing qid or token" });
   }
 
   try {
@@ -25,13 +25,17 @@ export default async function handler(req, res) {
     );
 
     const crmData = await crmResp.json();
-    if (!crmData.data || !crmData.data[0]) {
-      return res.status(404).json({ ok: false, error: "Quote not found", crmData });
+    const rec = crmData?.data?.[0];
+    if (!rec) {
+      return res.status(404).json({ ok: false, error: "Quote not found", crmRaw: crmData });
     }
 
-    const rec = crmData.data[0];
+    // Step 3: verify token
+    if (rec.Acceptance_Token !== token) {
+      return res.status(403).json({ ok: false, error: "Invalid or expired token" });
+    }
 
-    // Step 3: transform response for frontend
+    // Step 4: transform response
     res.status(200).json({
       ok: true,
       data: {
@@ -42,7 +46,7 @@ export default async function handler(req, res) {
         contact_name: rec.Contact_Name?.name,
         owner: rec.Owner?.name,
         valid_till: rec.Valid_Till,
-        status: rec.Acceptance_Status, // ✅ now mapped correctly
+        status: rec.Acceptance_Status,
         grand_total: rec.Grand_Total,
         sub_total: rec.Sub_Total,
         terms: rec.Terms_and_Conditions,

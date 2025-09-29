@@ -3,42 +3,154 @@
 <head>
   <meta charset="UTF-8">
   <title>EasyQuote</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; background: #f9f9f9; }
-    .quote-box { background: #fff; border: 1px solid #ccc; padding: 20px; border-radius: 10px; max-width: 800px; margin: auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-    .header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; }
-    .logo { height: 60px; margin-bottom: 10px; }
-    h1 { color: #333; margin: 10px 0; font-size: 24px; flex: 1; }
-    .status { font-weight: bold; padding: 4px 8px; border-radius: 5px; }
-    .status.Accepted { background: #d4edda; color: #155724; }
-    .status.Denied { background: #f8d7da; color: #721c24; }
-    .status.Negotiated { background: #fff3cd; color: #856404; }
-    .status.Pending { background: #cce5ff; color: #004085; }
-    .status.Discarded { background: #e2e3e5; color: #383d41; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-    th { background: #f4f4f4; }
-    .actions { margin-top: 20px; text-align: center; }
-    button { margin: 5px; padding: 10px 20px; font-size: 16px; cursor: pointer; border: none; border-radius: 5px; background: #007bff; color: #fff; }
-    button:hover { background: #0056b3; }
-    .error { color: red; font-weight: bold; }
-    .success { color: green; font-weight: bold; }
+    body {
+      font-family: 'Roboto', sans-serif;
+      margin: 20px;
+      background: #f4f6f9;
+      color: #333;
+    }
+
+    .quote-box {
+      background: #fff;
+      border-radius: 12px;
+      max-width: 900px;
+      margin: auto;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      padding: 30px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      border-bottom: 2px solid #f0f0f0;
+      padding-bottom: 15px;
+      margin-bottom: 20px;
+    }
+
+    .logo {
+      height: 60px;
+    }
+
+    h1 {
+      font-family: 'Poppins', sans-serif;
+      color: #2c3e50;
+      margin: 10px 0;
+      font-size: 26px;
+      flex: 1;
+    }
+
+    .status {
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 14px;
+      display: inline-block;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+
+    .status.Accepted { background: #e9f9ee; color: #27ae60; }
+    .status.Denied { background: #fdecea; color: #c0392b; }
+    .status.Negotiated { background: #fff7e6; color: #e67e22; }
+    .status.Pending { background: #eaf3ff; color: #2980b9; }
+    .status.Discarded { background: #f0f0f0; color: #7f8c8d; }
+
+    #details p {
+      margin: 6px 0;
+    }
+
+    #details p b {
+      color: #555;
+      margin-right: 6px;
+    }
+
+    .highlight {
+      background: #27ae60;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-weight: bold;
+      display: inline-block;
+      margin-top: 5px;
+    }
+
+    h3 {
+      font-family: 'Poppins', sans-serif;
+      margin-top: 25px;
+      color: #2c3e50;
+      border-left: 4px solid #2980b9;
+      padding-left: 10px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    th, td {
+      border: 1px solid #eee;
+      padding: 10px;
+      text-align: left;
+    }
+
+    th {
+      background: #f9fafc;
+      font-weight: 600;
+    }
+
+    .actions {
+      margin-top: 30px;
+      text-align: center;
+    }
+
+    button {
+      margin: 8px;
+      padding: 12px 24px;
+      font-size: 15px;
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      transition: 0.3s;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    button.accept { background: #27ae60; color: white; }
+    button.accept:hover { background: #219150; }
+
+    button.negotiate { background: #e67e22; color: white; }
+    button.negotiate:hover { background: #cf711f; }
+
+    button.deny { background: #c0392b; color: white; }
+    button.deny:hover { background: #a93226; }
+
+    .error { color: #c0392b; font-weight: bold; }
+    .success { color: #27ae60; font-weight: bold; }
 
     /* Responsive Layout */
     @media (max-width: 768px) {
-      body { margin: 10px; }
-      .quote-box { padding: 15px; }
-      h1 { font-size: 20px; text-align: center; }
+      .quote-box { padding: 20px; }
+      h1 { font-size: 22px; text-align: center; }
       .header { flex-direction: column; align-items: center; }
       .logo { height: 50px; }
       table, thead, tbody, th, td, tr { display: block; width: 100%; }
       th { display: none; }
-      tr { margin-bottom: 10px; }
-      td { border: none; padding: 6px 0; }
+      tr { margin-bottom: 12px; border-bottom: 1px solid #eee; }
+      td { border: none; padding: 8px 0; }
       td::before {
         font-weight: bold;
         display: inline-block;
-        width: 120px;
+        width: 130px;
       }
       td:nth-of-type(1)::before { content: "Product: "; }
       td:nth-of-type(2)::before { content: "Quantity: "; }
@@ -88,7 +200,6 @@
 
       el("title").innerText = "Quotation #" + q.quote_number;
 
-      // Status badge
       let statusHtml = `<span class="status ${status}">${status}`;
       if (q.accepted_on) statusHtml += ` on ${q.accepted_on}`;
       statusHtml += "</span>";
@@ -99,7 +210,7 @@
         <p><b>Contact:</b> ${q.contact_name || ""}</p>
         <p><b>Owner:</b> ${q.owner || ""}</p>
         <p><b>Valid Till:</b> ${q.valid_till || ""}</p>
-        <p><b>Grand Total:</b> ${q.grand_total}</p>
+        <p><b>Grand Total:</b> <span class="highlight">${q.grand_total}</span></p>
       `;
 
       let itemsHtml = "<h3>Items</h3><table><tr><th>Product</th><th>Qty</th><th>Price</th><th>Total</th></tr>";
@@ -114,22 +225,21 @@
       const actions = el("actions");
       actions.innerHTML = "";
 
-      // ✅ Hide buttons if Accepted/Denied/Discarded
       if (["Accepted", "Denied", "Discarded"].includes(status)) {
         actions.innerHTML = `<p class='success'>This quote has been ${status}${q.accepted_on ? " on " + q.accepted_on : ""}.</p>`;
         return;
       }
 
-      // Otherwise, show action buttons — map labels → canonical values
       const buttons = [
-        { label: "Accept", value: "Accepted" },
-        { label: "Negotiate", value: "Negotiated" },
-        { label: "Denied", value: "Denied" },
+        { label: "Accept", value: "Accepted", cls: "accept" },
+        { label: "Negotiate", value: "Negotiated", cls: "negotiate" },
+        { label: "Denied", value: "Denied", cls: "deny" },
       ];
 
-      buttons.forEach(({label, value}) => {
+      buttons.forEach(({label, value, cls}) => {
         const btn = document.createElement("button");
         btn.innerText = label;
+        btn.classList.add(cls);
         btn.onclick = () => doRespond(value);
         actions.appendChild(btn);
       });

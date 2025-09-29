@@ -104,14 +104,16 @@
   const fmtDate = (s)=> s ? new Date(s).toLocaleDateString() : "—";
   const esc = (s)=> (s ?? "").toString().replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
 
-  if(!qid){
-    el("subtitle").innerHTML = "<span class='error'>Missing ?qid in URL.</span>";
-    return;
-  }
+if(!qid || !token){
+  el("subtitle").innerHTML = "<span class='error'>Missing qid or token in URL.</span>";
+  return;
+}
 
   async function loadQuote(){
     try{
-      const r = await fetch(`/api/quote?qid=${encodeURIComponent(qid)}`);
+     const token = qs.get("token");
+const r = await fetch(`/api/quote?qid=${encodeURIComponent(qid)}&token=${encodeURIComponent(token)}`);
+
       const j = await r.json();
       if(!j.ok){ throw new Error(j.error || "Unable to load quote"); }
       const d = j.data;

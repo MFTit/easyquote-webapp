@@ -24,24 +24,23 @@ export default async function handler(req, res) {
     );
     const crmData = await crmResp.json();
 
-   if (!crmData.data || !crmData.data[0]) {
-  return res.status(404).json({
-    ok: false,
-    error: "Quote not found (Zoho response issue)",
-    crmRaw: crmData // <-- Show exactly what Zoho sent back
-  });
-}
-
-
+    // Debug: If Zoho doesn’t return expected data, show full raw response
+    if (!crmData.data || !crmData.data[0]) {
+      return res.status(404).json({
+        ok: false,
+        error: "Quote not found (Zoho response issue)",
+        crmRaw: crmData   // Show exactly what Zoho sent back
+      });
+    }
 
     const q = crmData.data[0];
 
     // Step 3: Token validation
     if (q.Acceptance_Token && q.Acceptance_Token !== token) {
-      return res.status(403).json({ ok: false, error: "Invalid token" });
+      return res.status(403).json({ ok: false, error: "Invalid token", crmRaw: crmData });
     }
 
-    // Step 4: Status logic (priority order)
+    // Step 4: Status logic
     let status = q.Acceptance_Status || "Pending";
     const now = new Date();
     const validTill = q.Valid_Till ? new Date(q.Valid_Till) : null;
@@ -74,7 +73,7 @@ export default async function handler(req, res) {
       })),
     };
 
-    return res.status(200).json({ ok: true, data: formatted });
+    return res.status(200).json({ ok: true, data: formatted, crmRaw: crmData });
   } catch (err) {
     return res.status(500).json({ ok: false, error: err.message });
   }

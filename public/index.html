@@ -4,33 +4,37 @@
   <meta charset="UTF-8">
   <title>EasyQuote</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; background: #f9f9f9; font-size: 10px; }
-    .quote-box { background: #fff; border: 1px solid #ccc; padding: 20px; border-radius: 10px; max-width: 800px; margin: auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1); font-size: 10px; }
-    .header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; }
-    .logo { height: 40px; margin-bottom: 10px; }
-    h1 { color: #333; margin: 10px 0; font-size: 12px; flex: 1; }
-    .status { font-weight: bold; padding: 2px 5px; border-radius: 3px; font-size: 10px; }
+    body { font-family: Arial, sans-serif; margin: 20px; background: #f9f9f9; font-size: 12px; }
+    .quote-box { background: #fff; border: 1px solid #ccc; padding: 20px; border-radius: 10px; max-width: 800px; margin: auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1); font-size: 12px; }
+    .header { text-align: center; }
+    .logo { height: 60px; display: block; margin: 0 auto; }
+    h1 { color: #333; margin: 10px 0; font-size: 16px; text-align: center; }
+    .status { font-weight: bold; padding: 2px 6px; border-radius: 3px; font-size: 12px; }
     .status.Accepted { background: #d4edda; color: #155724; }
     .status.Denied { background: #f8d7da; color: #721c24; }
     .status.Negotiated { background: #fff3cd; color: #856404; }
     .status.Pending { background: #cce5ff; color: #004085; }
     .status.Discarded { background: #e2e3e5; color: #383d41; }
     table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { border: 1px solid #ddd; padding: 4px; text-align: left; font-size: 10px; }
+    th, td { border: 1px solid #ddd; padding: 6px; text-align: left; font-size: 12px; }
     th { background: #f4f4f4; }
     .actions { margin-top: 15px; text-align: center; }
-    button { margin: 3px; padding: 5px 10px; font-size: 10px; cursor: pointer; border: none; border-radius: 3px; background: #007bff; color: #fff; }
-    button:hover { background: #0056b3; }
-    .error { color: red; font-weight: bold; font-size: 10px; }
-    .success { color: green; font-weight: bold; font-size: 10px; }
-    .grand-total { text-align: right; font-weight: bold; margin-top: 10px; }
+    button { margin: 3px; padding: 6px 12px; font-size: 12px; cursor: pointer; border: none; border-radius: 3px; }
+    button.accept { background: #28a745; color: #fff; }
+    button.accept:hover { background: #218838; }
+    button.negotiate { background: #ffc107; color: #212529; }
+    button.negotiate:hover { background: #e0a800; }
+    button.denied { background: #dc3545; color: #fff; }
+    button.denied:hover { background: #c82333; }
+    .error { color: red; font-weight: bold; font-size: 12px; }
+    .success { color: green; font-weight: bold; font-size: 12px; }
+    .grand-total { text-align: right; font-weight: bold; font-size: 14px; margin-top: 10px; }
 
     @media (max-width: 768px) {
       body { margin: 10px; }
       .quote-box { padding: 10px; }
-      h1 { font-size: 11px; text-align: center; }
-      .header { flex-direction: column; align-items: center; }
-      .logo { height: 35px; }
+      h1 { font-size: 14px; }
+      .logo { height: 50px; }
       table, thead, tbody, th, td, tr { display: block; width: 100%; }
       th { display: none; }
       tr { margin-bottom: 8px; }
@@ -50,8 +54,8 @@
     <p id="subtitle"></p>
     <div id="details"></div>
     <div id="items"></div>
+    <div id="grandtotal"></div>
     <div id="terms"></div>
-    <div class="grand-total" id="grandtotal"></div>
     <div class="actions" id="actions"></div>
   </div>
 
@@ -80,13 +84,12 @@
       let statusHtml = `<span class="status ${status}">${status}`;
       if (q.accepted_on) statusHtml += ` on ${q.accepted_on}`;
       statusHtml += "</span>";
-      el("subtitle").innerHTML = `${q.subject} | ${statusHtml}`;
+      el("subtitle").innerHTML = `${statusHtml}`;
 
       el("details").innerHTML = `
-        <p><b>Deal:</b> ${q.deal_name || ""}</p>
         <p><b>CLIENTE:</b> ${q.contact_name || ""}</p>
-        <p><b>Owner:</b> ${q.owner || ""}</p>
-        <p><b>Valid Till:</b> ${q.valid_till || ""}</p>
+        <p><b>Company:</b> ${q.company || ""}</p>
+        <p style="text-align:right"><b>Valid Till:</b> ${q.valid_till || ""}</p>
       `;
 
       let itemsHtml = `<table><tr><th>Produto</th><th>Volume Litro</th></tr>`;
@@ -96,9 +99,9 @@
       itemsHtml += "</table>";
       el("items").innerHTML = itemsHtml;
 
-      el("terms").innerHTML = "<h3>Terms & Conditions</h3><p>" + (q.terms || "None") + "</p>";
-
       el("grandtotal").innerHTML = `Grand Total: ${q.grand_total}`;
+
+      el("terms").innerHTML = "<h3>Terms & Conditions</h3><p>" + (q.terms || "None") + "</p>";
 
       const actions = el("actions");
       actions.innerHTML = "";
@@ -108,12 +111,13 @@
       }
 
       const buttons = [
-        { label: "Accept", value: "Accepted" },
-        { label: "Negotiate", value: "Negotiated" },
-        { label: "Denied", value: "Denied" },
+        { label: "Accept", value: "Accepted", cls: "accept" },
+        { label: "Negotiate", value: "Negotiated", cls: "negotiate" },
+        { label: "Denied", value: "Denied", cls: "denied" },
       ];
-      buttons.forEach(({label, value}) => {
+      buttons.forEach(({label, value, cls}) => {
         const btn = document.createElement("button");
+        btn.className = cls;
         btn.innerText = label;
         btn.onclick = () => doRespond(value);
         actions.appendChild(btn);

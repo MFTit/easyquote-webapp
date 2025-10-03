@@ -17,7 +17,7 @@ export default async function handler(req, res) {
       return res.status(401).json({
         ok: false,
         error: "Failed to refresh Zoho token",
-        raw: tokenData
+        raw: tokenData   // 👈 Show Zoho’s raw error reply
       });
     }
 
@@ -33,18 +33,17 @@ export default async function handler(req, res) {
     );
     const crmData = await crmResp.json();
 
-    // Debug: If Zoho doesn’t return expected data, show full raw response
     if (!crmData.data || !crmData.data[0]) {
       return res.status(404).json({
         ok: false,
         error: "Quote not found (Zoho response issue)",
-        crmRaw: crmData   // Show exactly what Zoho sent back
+        crmRaw: crmData
       });
     }
 
     const q = crmData.data[0];
 
-    // Step 3: Token validation (check against stored Acceptance_Token)
+    // Step 3: Token validation
     if (q.Acceptance_Token && q.Acceptance_Token !== token) {
       return res.status(403).json({
         ok: false,
@@ -58,15 +57,11 @@ export default async function handler(req, res) {
     const now = new Date();
     const validTill = q.Valid_Till ? new Date(q.Valid_Till) : null;
 
-    if (q.Acceptance_Status === "Discarded") {
-      status = "Discarded";
-    } else if (q.Acceptance_Status === "Accepted") {
-      status = "Accepted";
-    } else if (q.Acceptance_Status === "Denied") {
-      status = "Denied";
-    } else if (validTill && validTill < now && (status === "Pending" || status === "Negotiated")) {
+    if (q.Acceptance_Status === "Discarded") status = "Discarded";
+    else if (q.Acceptance_Status === "Accepted") status = "Accepted";
+    else if (q.Acceptance_Status === "Denied") status = "Denied";
+    else if (validTill && validTill < now && (status === "Pending" || status === "Negotiated"))
       status = "Expired";
-    }
 
     // Step 5: Build response
     const formatted = {

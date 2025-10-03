@@ -1,3 +1,5 @@
+import { getZohoAccessToken, invalidateZohoToken } from "../lib/zohoAuth.js";
+
 export default async function handler(req, res) {
   const { qid, token } = req.query;
 
@@ -6,53 +8,51 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Step 1: Always refresh access token
-    const tokenResp = await fetch(
-      `${process.env.ZOHO_ACCOUNTS_URL}/oauth/v2/token?refresh_token=${process.env.ZOHO_REFRESH_TOKEN}&client_id=${process.env.ZOHO_CLIENT_ID}&client_secret=${process.env.ZOHO_CLIENT_SECRET}&grant_type=refresh_token`,
-      { method: "POST" }
-    );
-    const tokenData = await tokenResp.json();
+    let accessToken = await getZohoAccessToken();
 
-    if (!tokenData.access_token) {
-      return res.status(401).json({
-        ok: false,
-        error: "Failed to refresh Zoho token",
-        raw: tokenData   // 👈 Show Zoho’s raw error reply
-      });
+    const fetchQuote = async () => {
+      const crmResp = await fetch(
+        `${process.env.ZOHO_API_BASE}/crm/v2/Quotes/${qid}`,
+        {
+          method: "GET",
+          headers: { Authorization: `Zoho-oauthtoken ${accessToken}` },
+        }
+      );
+      const data = await crmResp.json();
+      return { status: crmResp.status, data };
+    };
+
+    // First attempt
+    let { data: crmData } = await fetchQuote();
+
+    // If Zoho says token invalid, clear cache and retry once
+    if (
+      (crmData?.code === "INVALID_TOKEN" ||
+        crmData?.message === "invalid oauth token") &&
+      !req._retried
+    ) {
+      invalidateZohoToken();
+      accessToken = await getZohoAccessToken();
+      const second = await fetchQuote();
+      crmData = second.data;
     }
 
-    const accessToken = tokenData.access_token;
-
-    // Step 2: Fetch Quote
-    const crmResp = await fetch(
-      `${process.env.ZOHO_API_BASE}/crm/v2/Quotes/${qid}`,
-      {
-        method: "GET",
-        headers: { "Authorization": `Zoho-oauthtoken ${accessToken}` },
-      }
-    );
-    const crmData = await crmResp.json();
-
     if (!crmData.data || !crmData.data[0]) {
-      return res.status(404).json({
-        ok: false,
-        error: "Quote not found (Zoho response issue)",
-        crmRaw: crmData
-      });
+      return res
+        .status(404)
+        .json({ ok: false, error: "Quote not found (Zoho response issue)", crmRaw: crmData });
     }
 
     const q = crmData.data[0];
 
-    // Step 3: Token validation
+    // Token check: if CRM stored token exists and doesn't match URL token
     if (q.Acceptance_Token && q.Acceptance_Token !== token) {
-      return res.status(403).json({
-        ok: false,
-        error: "Invalid token provided for this quote",
-        crmRaw: crmData
-      });
+      return res
+        .status(403)
+        .json({ ok: false, error: "Invalid token for this Quote", crmRaw: crmData });
     }
 
-    // Step 4: Status logic
+    // Status logic
     let status = q.Acceptance_Status || "Pending";
     const now = new Date();
     const validTill = q.Valid_Till ? new Date(q.Valid_Till) : null;
@@ -60,10 +60,10 @@ export default async function handler(req, res) {
     if (q.Acceptance_Status === "Discarded") status = "Discarded";
     else if (q.Acceptance_Status === "Accepted") status = "Accepted";
     else if (q.Acceptance_Status === "Denied") status = "Denied";
-    else if (validTill && validTill < now && (status === "Pending" || status === "Negotiated"))
+    else if (validTill && validTill < now && (status === "Pending" || status === "Negotiated")) {
       status = "Expired";
+    }
 
-    // Step 5: Build response
     const formatted = {
       id: q.id,
       quote_number: q.Quote_Number,
@@ -74,14 +74,14 @@ export default async function handler(req, res) {
       status,
       grand_total: q.Grand_Total,
       terms: q.Terms_and_Conditions,
-      products: (q.Product_Details || []).map(p => ({
+      products: (q.Product_Details || []).map((p) => ({
         id: p.id,
         product_name: p.product?.name,
         quantity: p.quantity,
       })),
     };
 
-    return res.status(200).json({ ok: true, data: formatted, crmRaw: crmData });
+    return res.status(200).json({ ok: true, data: formatted });
   } catch (err) {
     return res.status(500).json({ ok: false, error: err.message });
   }

@@ -32,7 +32,7 @@
     .status-negotiated { background: orange; }
     .status-denied { background: red; }
     .status-pending { background: gray; }
-    .status-expired { background: gray; }
+    .status-expired { background: red; }
     .status-discarded { background: gray; }
     table {
       width: 100%;
@@ -129,14 +129,30 @@
 
       // status badge
       let statusClass = "status-pending";
-      if (q.status === "Accepted") statusClass = "status-accepted";
-      else if (q.status === "Negotiated") statusClass = "status-negotiated";
-      else if (q.status === "Denied") statusClass = "status-denied";
-      else if (q.status === "Expired") statusClass = "status-expired";
-      else if (q.status === "Discarded") statusClass = "status-discarded";
+      let statusText = q.status;
+
+      if (q.status === "Accepted") {
+        statusClass = "status-accepted";
+        statusText = `Accepted on ${new Date().toLocaleString()}`;
+      }
+      else if (q.status === "Denied") {
+        statusClass = "status-denied";
+        statusText = `Denied on ${new Date().toLocaleString()}`;
+      }
+      else if (q.status === "Negotiated") {
+        statusClass = "status-negotiated";
+      }
+      else if (q.status === "Expired") {
+        statusClass = "status-expired";
+        statusText = "Expired";
+      }
+      else if (q.status === "Discarded") {
+        statusClass = "status-discarded";
+        statusText = "Discarded<br/><small>Para qualquer dúvida, entre em contato com o representante de vendas.</small>";
+      }
 
       document.getElementById("status").innerHTML = `
-        <span class="status-badge ${statusClass}">${q.status}</span>
+        <span class="status-badge ${statusClass}">${statusText}</span>
       `;
 
       // details

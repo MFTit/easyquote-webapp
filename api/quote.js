@@ -30,29 +30,27 @@ export default async function handler(req, res) {
 
     const q = crmData.data[0];
 
-    // Debug log (check Vercel logs)
-    console.log("QuoteID:", qid, "CRM_Token:", q.Acceptance_Token, "URL_Token:", token, "Status:", q.Acceptance_Status);
-
-    // Step 3: Token validation (only if CRM has a token stored)
+    // Step 3: Token validation
     if (q.Acceptance_Token && q.Acceptance_Token !== token) {
       return res.status(403).json({ ok: false, error: "Invalid token" });
     }
 
-    // Step 4: Expiry & discard logic
+    // Step 4: Status logic (priority order)
     let status = q.Acceptance_Status || "Pending";
     const now = new Date();
-    const expiry = q.Acceptance_Token_Expires ? new Date(q.Acceptance_Token_Expires) : null;
     const validTill = q.Valid_Till ? new Date(q.Valid_Till) : null;
-
-    if ((expiry && expiry < now) || (validTill && validTill < now)) {
-      status = "Expired";
-    }
 
     if (q.Acceptance_Status === "Discarded") {
       status = "Discarded";
+    } else if (q.Acceptance_Status === "Accepted") {
+      status = "Accepted";
+    } else if (q.Acceptance_Status === "Denied") {
+      status = "Denied";
+    } else if (validTill && validTill < now && (status === "Pending" || status === "Negotiated")) {
+      status = "Expired";
     }
 
-    // Step 5: Build formatted response
+    // Step 5: Build response
     const formatted = {
       id: q.id,
       quote_number: q.Quote_Number,

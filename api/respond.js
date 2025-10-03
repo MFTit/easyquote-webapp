@@ -1,3 +1,5 @@
+import { getZohoAccessToken, invalidateZohoToken } from "../lib/zohoAuth.js";
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Only POST allowed" });
@@ -5,12 +7,11 @@ export default async function handler(req, res) {
 
   try {
     const { qid, action, comment, name } = req.body;
-
     if (!qid || !action) {
       return res.status(400).json({ error: "Missing qid or action" });
     }
 
-    // Normalize action
+    // Normalize action to CRM canonical values
     const norm = (s) => {
       const t = String(s || "").toLowerCase();
       if (t.startsWith("accept")) return "Accepted";
@@ -20,22 +21,7 @@ export default async function handler(req, res) {
     };
     const finalAction = norm(action);
 
-    // Step 1: Always refresh access token
-    const tokenResp = await fetch(
-      `${process.env.ZOHO_ACCOUNTS_URL}/oauth/v2/token?refresh_token=${process.env.ZOHO_REFRESH_TOKEN}&client_id=${process.env.ZOHO_CLIENT_ID}&client_secret=${process.env.ZOHO_CLIENT_SECRET}&grant_type=refresh_token`,
-      { method: "POST" }
-    );
-    const tokenData = await tokenResp.json();
-
-    if (!tokenData.access_token) {
-      return res.status(401).json({
-        ok: false,
-        error: "Failed to refresh Zoho token",
-        raw: tokenData   // 👈 Show Zoho’s raw error reply
-      });
-    }
-
-    const accessToken = tokenData.access_token;
+    let accessToken = await getZohoAccessToken();
 
     // Helper: Zoho datetime (yyyy-MM-dd'T'HH:mm:ss)
     const formatZohoDate = (d) => {
@@ -50,45 +36,53 @@ export default async function handler(req, res) {
       );
     };
 
-    // Step 2: Build update map
-    let updateMap = {
-      Acceptance_Status: finalAction,
+    const updateMap = {
+      Acceptance_Status: finalAction,  // "Accepted" / "Negotiated" / "Denied"
       Client_Response: comment || null,
       Acknowledged_By: name || null,
+      ...(finalAction === "Accepted" || finalAction === "Denied"
+        ? { Acceptance_Token_Expires: formatZohoDate(new Date()) }
+        : {}),
     };
 
-    if (finalAction === "Accepted" || finalAction === "Denied") {
-      updateMap.Acceptance_Token_Expires = formatZohoDate(new Date());
-    }
-
-    // Step 3: Update Quote
-    const crmResp = await fetch(
-      `${process.env.ZOHO_API_BASE}/crm/v2/Quotes/${qid}`,
-      {
+    const doUpdate = async () => {
+      const crmResp = await fetch(`${process.env.ZOHO_API_BASE}/crm/v2/Quotes/${qid}`, {
         method: "PUT",
         headers: {
-          "Authorization": `Zoho-oauthtoken ${accessToken}`,
+          Authorization: `Zoho-oauthtoken ${accessToken}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ data: [updateMap] }),
-      }
-    );
+      });
+      const data = await crmResp.json();
+      return { status: crmResp.status, data };
+    };
 
-    const crmData = await crmResp.json();
+    // First attempt
+    let { data: crmData } = await doUpdate();
+
+    // Retry once on INVALID_TOKEN
+    if (
+      (crmData?.code === "INVALID_TOKEN" ||
+        crmData?.message === "invalid oauth token" ||
+        crmData?.data?.[0]?.code === "INVALID_TOKEN") &&
+      !req._retried
+    ) {
+      invalidateZohoToken();
+      accessToken = await getZohoAccessToken();
+      const second = await doUpdate();
+      crmData = second.data;
+    }
 
     const first = crmData?.data?.[0];
     if (first && first.code === "SUCCESS") {
-      return res.status(200).json({
-        ok: true,
-        action: finalAction,
-        sent: updateMap
-      });
+      return res.status(200).json({ ok: true, action: finalAction, sent: updateMap });
     } else {
       return res.status(400).json({
         ok: false,
         message: "Zoho did not accept the update",
         sent: updateMap,
-        crmRaw: crmData
+        crmRaw: crmData,
       });
     }
   } catch (err) {

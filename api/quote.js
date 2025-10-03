@@ -35,7 +35,7 @@ export default async function handler(req, res) {
       return res.status(403).json({ ok: false, error: "Invalid token" });
     }
 
-    // Step 4: Status logic (priority order)
+    // Step 4: Status logic
     let status = q.Acceptance_Status || "Pending";
     const now = new Date();
     const validTill = q.Valid_Till ? new Date(q.Valid_Till) : null;
@@ -61,6 +61,8 @@ export default async function handler(req, res) {
       status,
       grand_total: q.Grand_Total,
       terms: q.Terms_and_Conditions,
+      acceptance_datetime: q.Acceptance_DateTime || null,
+      denied_datetime: q.Denied_DateTime || null,
       products: (q.Product_Details || []).map(p => ({
         id: p.id,
         product_name: p.product?.name,

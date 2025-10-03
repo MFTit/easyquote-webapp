@@ -5,23 +5,78 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>EasyQuote</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; font-size: 12px; }
-    header { text-align: center; margin-bottom: 20px; position: relative; }
-    header img { max-height: 60px; }
-    .status-badge { position: absolute; right: 0; top: 10px; padding: 6px 12px; border-radius: 6px; font-weight: bold; font-size: 12px; color: white; }
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      font-size: 12px;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 20px;
+      position: relative;
+    }
+    header img {
+      max-height: 60px;
+    }
+    .status-badge {
+      position: absolute;
+      right: 0;
+      top: 10px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-weight: bold;
+      font-size: 12px;
+      color: white;
+    }
     .status-accepted { background: green; }
     .status-negotiated { background: orange; }
     .status-denied { background: red; }
     .status-pending { background: gray; }
     .status-expired { background: red; }
     .status-discarded { background: gray; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-    th { background: #f2f2f2; }
-    .grand-total-box { margin-top: 15px; display: flex; justify-content: flex-end; }
-    .grand-total { border: 2px solid #333; padding: 12px 20px; border-radius: 8px; background: #fefefe; font-weight: bold; font-size: 14px; color: #000; text-align: right; min-width: 200px; }
-    .actions { margin-top: 20px; text-align: center; }
-    .actions button { margin: 5px; padding: 10px 20px; font-size: 12px; border: none; border-radius: 5px; cursor: pointer; color: white; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background: #f2f2f2;
+    }
+    .grand-total-box {
+      margin-top: 15px;
+      display: flex;
+      justify-content: flex-end;
+    }
+    .grand-total {
+      border: 2px solid #333;
+      padding: 12px 20px;
+      border-radius: 8px;
+      background: #fefefe;
+      font-weight: bold;
+      font-size: 14px;
+      color: #000;
+      text-align: right;
+      min-width: 200px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    .actions {
+      margin-top: 20px;
+      text-align: center;
+    }
+    .actions button {
+      margin: 5px;
+      padding: 10px 20px;
+      font-size: 12px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      color: white;
+    }
     .accept-btn { background: green; }
     .negotiate-btn { background: orange; }
     .deny-btn { background: red; }
@@ -37,7 +92,12 @@
   <div id="details"></div>
 
   <table id="items">
-    <thead><tr><th>Produto</th><th>Volume (Litro)</th></tr></thead>
+    <thead>
+      <tr>
+        <th>Produto</th>
+        <th>Volume (Litro)</th>
+      </tr>
+    </thead>
     <tbody></tbody>
   </table>
 
@@ -67,43 +127,69 @@
       const q = data.data;
       document.getElementById("quote-number").innerText = "Quotation #" + q.quote_number;
 
+      // status badge
       let statusClass = "status-pending";
       let statusText = q.status;
 
       if (q.status === "Accepted") {
         statusClass = "status-accepted";
         statusText = `Accepted on ${new Date().toLocaleString()}`;
-      } else if (q.status === "Denied") {
+      }
+      else if (q.status === "Denied") {
         statusClass = "status-denied";
         statusText = `Denied on ${new Date().toLocaleString()}`;
-      } else if (q.status === "Negotiated") {
+      }
+      else if (q.status === "Negotiated") {
         statusClass = "status-negotiated";
-      } else if (q.status === "Expired") {
+      }
+      else if (q.status === "Expired") {
         statusClass = "status-expired";
         statusText = "Expired";
-      } else if (q.status === "Discarded") {
+      }
+      else if (q.status === "Discarded") {
         statusClass = "status-discarded";
         statusText = "Discarded<br/><small>Para qualquer dúvida, entre em contato com o representante de vendas.</small>";
       }
 
-      document.getElementById("status").innerHTML = `<span class="status-badge ${statusClass}">${statusText}</span>`;
+      document.getElementById("status").innerHTML = `
+        <span class="status-badge ${statusClass}">${statusText}</span>
+      `;
 
+      // details
       document.getElementById("details").innerHTML = `
         <p><b>CLIENTE:</b> ${q.contact_name || ""}</p>
         <p><b>Company:</b> ${q.company || ""}</p>
         <p style="text-align:right;"><b>Valid Till:</b> ${q.valid_till || ""}</p>
       `;
 
+      // items
       const tbody = document.querySelector("#items tbody");
       tbody.innerHTML = q.products.map(p => `
-        <tr><td>${p.product_name || ""}</td><td>${p.quantity || 0}</td></tr>
+        <tr>
+          <td>${p.product_name || ""}</td>
+          <td>${p.quantity || 0}</td>
+        </tr>
       `).join("");
 
-      const formatter = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 });
-      document.getElementById("grandtotal").innerHTML = `<div class="grand-total-box"><div class="grand-total">${formatter.format(q.grand_total)}</div></div>`;
+      // grand total with Brazilian currency formatting
+      const formatter = new Intl.NumberFormat("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+        minimumFractionDigits: 2,
+      });
 
+      document.getElementById("grandtotal").innerHTML = `
+        <div class="grand-total-box">
+          <div class="grand-total">
+            ${formatter.format(q.grand_total)}
+          </div>
+        </div>
+      `;
+
+      // terms
       document.getElementById("terms").innerText = q.terms || "";
 
+      // actions
       const actions = document.getElementById("actions");
       if (q.status === "Pending" || q.status === "Negotiated") {
         actions.innerHTML = `
@@ -112,7 +198,11 @@
           <button class="deny-btn" onclick="sendResponse('Denied')">Deny</button>
         `;
       } else {
-        actions.innerHTML = `<p style="text-align:center; color:#555; margin-top:10px;">Para qualquer dúvida, entre em contato com o representante de vendas.</p>`;
+        actions.innerHTML = `
+          <p style="text-align:center; color:#555; margin-top:10px;">
+            Para qualquer dúvida, entre em contato com o representante de vendas.
+          </p>
+        `;
       }
     }
 

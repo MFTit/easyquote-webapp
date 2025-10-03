@@ -14,7 +14,7 @@ export default async function handler(req, res) {
     const tokenData = await tokenResp.json();
     const accessToken = tokenData.access_token;
 
-    // Step 2: Fetch Quote from CRM
+    // Step 2: Fetch Quote
     const crmResp = await fetch(
       `${process.env.ZOHO_API_BASE}/crm/v2/Quotes/${qid}`,
       {
@@ -32,16 +32,21 @@ export default async function handler(req, res) {
 
     // Step 3: Token validation
     if (q.Acceptance_Token !== token) {
-      return res.status(403).json({ ok: false, error: "Invalid or expired token" });
+      return res.status(403).json({ ok: false, error: "Invalid token" });
     }
 
-    // Step 4: Expiry validation
+    // Step 4: Expiry & discard logic
+    let status = q.Acceptance_Status || "Pending";
     const now = new Date();
     const expiry = q.Acceptance_Token_Expires ? new Date(q.Acceptance_Token_Expires) : null;
     const validTill = q.Valid_Till ? new Date(q.Valid_Till) : null;
 
     if ((expiry && expiry < now) || (validTill && validTill < now)) {
-      return res.status(403).json({ ok: false, error: "This quote has expired" });
+      status = "Expired";
+    }
+
+    if (q.Acceptance_Status === "Discarded") {
+      status = "Discarded";
     }
 
     // Step 5: Build formatted response
@@ -52,10 +57,8 @@ export default async function handler(req, res) {
       contact_name: q.Contact_Name?.name,
       company: q.Account_Name?.name || "",
       valid_till: q.Valid_Till,
-      status: q.Acceptance_Status || "Pending",
-      accepted_on: q.Acceptance_Token_Expires || null,
+      status,
       grand_total: q.Grand_Total,
-      sub_total: q.Sub_Total,
       terms: q.Terms_and_Conditions,
       products: (q.Product_Details || []).map(p => ({
         id: p.id,

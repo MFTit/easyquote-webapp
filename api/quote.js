@@ -6,12 +6,21 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Step 1: Refresh access token
+    // Step 1: Always refresh access token
     const tokenResp = await fetch(
       `${process.env.ZOHO_ACCOUNTS_URL}/oauth/v2/token?refresh_token=${process.env.ZOHO_REFRESH_TOKEN}&client_id=${process.env.ZOHO_CLIENT_ID}&client_secret=${process.env.ZOHO_CLIENT_SECRET}&grant_type=refresh_token`,
       { method: "POST" }
     );
     const tokenData = await tokenResp.json();
+
+    if (!tokenData.access_token) {
+      return res.status(401).json({
+        ok: false,
+        error: "Failed to refresh Zoho token",
+        raw: tokenData
+      });
+    }
+
     const accessToken = tokenData.access_token;
 
     // Step 2: Fetch Quote
@@ -35,9 +44,13 @@ export default async function handler(req, res) {
 
     const q = crmData.data[0];
 
-    // Step 3: Token validation
+    // Step 3: Token validation (check against stored Acceptance_Token)
     if (q.Acceptance_Token && q.Acceptance_Token !== token) {
-      return res.status(403).json({ ok: false, error: "Invalid token", crmRaw: crmData });
+      return res.status(403).json({
+        ok: false,
+        error: "Invalid token provided for this quote",
+        crmRaw: crmData
+      });
     }
 
     // Step 4: Status logic

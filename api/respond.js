@@ -10,7 +10,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Missing qid or action" });
     }
 
-    // Normalize action to CRM canonical values
+    // Normalize action
     const norm = (s) => {
       const t = String(s || "").toLowerCase();
       if (t.startsWith("accept")) return "Accepted";
@@ -31,7 +31,7 @@ export default async function handler(req, res) {
       return res.status(401).json({
         ok: false,
         error: "Failed to refresh Zoho token",
-        raw: tokenData
+        raw: tokenData   // 👈 Show Zoho’s raw error reply
       });
     }
 
@@ -52,17 +52,16 @@ export default async function handler(req, res) {
 
     // Step 2: Build update map
     let updateMap = {
-      Acceptance_Status: finalAction,  // "Accepted" / "Negotiated" / "Denied"
+      Acceptance_Status: finalAction,
       Client_Response: comment || null,
       Acknowledged_By: name || null,
     };
 
-    // Expire token if accepted/denied
     if (finalAction === "Accepted" || finalAction === "Denied") {
       updateMap.Acceptance_Token_Expires = formatZohoDate(new Date());
     }
 
-    // Step 3: Update Quote in CRM
+    // Step 3: Update Quote
     const crmResp = await fetch(
       `${process.env.ZOHO_API_BASE}/crm/v2/Quotes/${qid}`,
       {
@@ -89,7 +88,7 @@ export default async function handler(req, res) {
         ok: false,
         message: "Zoho did not accept the update",
         sent: updateMap,
-        crmRaw: crmData,
+        crmRaw: crmData
       });
     }
   } catch (err) {

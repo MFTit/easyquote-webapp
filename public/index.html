@@ -113,8 +113,12 @@
     async function loadQuote() {
       const resp = await fetch(`/api/quote?qid=${qid}&token=${token}`);
       const data = await resp.json();
+
       if (!data.ok) {
-        document.body.innerHTML = `<p style="color:red;">${data.error || "Failed to load quote"}</p>`;
+        document.body.innerHTML = `
+          <h2 style="color:red; text-align:center;">${data.error}</h2>
+          <p style="text-align:center;">Please contact your sales representative for a new quote.</p>
+        `;
         return;
       }
 

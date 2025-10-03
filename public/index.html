@@ -99,7 +99,13 @@
       itemsHtml += "</table>";
       el("items").innerHTML = itemsHtml;
 
-      el("grandtotal").innerHTML = `Grand Total: ${q.grand_total}`;
+   el("grandtotal").innerHTML = `
+  <div class="grand-total-box">
+    <div class="grand-total">
+      Grand Total: ${q.grand_total}
+    </div>
+  </div>
+`;
 
       el("terms").innerHTML = "<h3>Terms & Conditions</h3><p>" + (q.terms || "None") + "</p>";
 

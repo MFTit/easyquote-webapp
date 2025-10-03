@@ -6,7 +6,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Step 1: Refresh access token
     const tokenResp = await fetch(
       `${process.env.ZOHO_ACCOUNTS_URL}/oauth/v2/token?refresh_token=${process.env.ZOHO_REFRESH_TOKEN}&client_id=${process.env.ZOHO_CLIENT_ID}&client_secret=${process.env.ZOHO_CLIENT_SECRET}&grant_type=refresh_token`,
       { method: "POST" }
@@ -14,7 +13,6 @@ export default async function handler(req, res) {
     const tokenData = await tokenResp.json();
     const accessToken = tokenData.access_token;
 
-    // Step 2: Fetch Quote
     const crmResp = await fetch(
       `${process.env.ZOHO_API_BASE}/crm/v2/Quotes/${qid}`,
       {
@@ -24,23 +22,16 @@ export default async function handler(req, res) {
     );
     const crmData = await crmResp.json();
 
-   if (!crmData.data || !crmData.data[0]) {
-  return res.status(404).json({ 
-    ok: false, 
-    error: "Quote not found (Zoho response issue)", 
-    crmRaw: crmData 
-  });
-}
-
+    if (!crmData.data || !crmData.data[0]) {
+      return res.status(404).json({ ok: false, error: "Quote not found", crmRaw: crmData });
+    }
 
     const q = crmData.data[0];
 
-    // Step 3: Token validation
     if (q.Acceptance_Token && q.Acceptance_Token !== token) {
       return res.status(403).json({ ok: false, error: "Invalid token" });
     }
 
-    // Step 4: Status logic
     let status = q.Acceptance_Status || "Pending";
     const now = new Date();
     const validTill = q.Valid_Till ? new Date(q.Valid_Till) : null;
@@ -55,7 +46,6 @@ export default async function handler(req, res) {
       status = "Expired";
     }
 
-    // Step 5: Build response
     const formatted = {
       id: q.id,
       quote_number: q.Quote_Number,
@@ -66,8 +56,6 @@ export default async function handler(req, res) {
       status,
       grand_total: q.Grand_Total,
       terms: q.Terms_and_Conditions,
-      acceptance_datetime: q.Acceptance_DateTime || null,
-      denied_datetime: q.Denied_DateTime || null,
       products: (q.Product_Details || []).map(p => ({
         id: p.id,
         product_name: p.product?.name,

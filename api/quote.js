@@ -24,9 +24,6 @@ export default async function handler(req, res) {
     );
     const crmData = await crmResp.json();
 
-    // 🔎 Log raw Zoho data for debugging
-    console.log("CRM Raw:", JSON.stringify(crmData, null, 2));
-
     if (!crmData.data || !crmData.data[0]) {
       return res.status(404).json({ ok: false, error: "Quote not found", crmRaw: crmData });
     }
@@ -35,7 +32,7 @@ export default async function handler(req, res) {
 
     // Step 3: token validation
     if (["Accepted", "Denied"].includes(q.Acceptance_Status)) {
-      // ✅ allow readonly view
+      // allow readonly
     } else if (q.Acceptance_Token && q.Acceptance_Token !== token) {
       return res.status(403).json({ ok: false, error: "Invalid or expired token" });
     }
@@ -47,6 +44,7 @@ export default async function handler(req, res) {
       subject: q.Subject,
       deal_name: q.Deal_Name?.name,
       contact_name: q.Contact_Name?.name,
+      company: q.Account_Name?.name || "",   // ✅ Company added here
       owner: q.Owner?.name,
       valid_till: q.Valid_Till,
       status: q.Acceptance_Status || "Pending",
@@ -72,4 +70,3 @@ export default async function handler(req, res) {
     return res.status(500).json({ ok: false, error: err.message });
   }
 }
-

@@ -6,6 +6,7 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Step 1: Refresh access token
     const tokenResp = await fetch(
       `${process.env.ZOHO_ACCOUNTS_URL}/oauth/v2/token?refresh_token=${process.env.ZOHO_REFRESH_TOKEN}&client_id=${process.env.ZOHO_CLIENT_ID}&client_secret=${process.env.ZOHO_CLIENT_SECRET}&grant_type=refresh_token`,
       { method: "POST" }
@@ -13,6 +14,7 @@ export default async function handler(req, res) {
     const tokenData = await tokenResp.json();
     const accessToken = tokenData.access_token;
 
+    // Step 2: Fetch Quote
     const crmResp = await fetch(
       `${process.env.ZOHO_API_BASE}/crm/v2/Quotes/${qid}`,
       {
@@ -28,10 +30,12 @@ export default async function handler(req, res) {
 
     const q = crmData.data[0];
 
+    // Step 3: Token validation
     if (q.Acceptance_Token && q.Acceptance_Token !== token) {
       return res.status(403).json({ ok: false, error: "Invalid token" });
     }
 
+    // Step 4: Status logic (priority order)
     let status = q.Acceptance_Status || "Pending";
     const now = new Date();
     const validTill = q.Valid_Till ? new Date(q.Valid_Till) : null;
@@ -46,6 +50,7 @@ export default async function handler(req, res) {
       status = "Expired";
     }
 
+    // Step 5: Build response
     const formatted = {
       id: q.id,
       quote_number: q.Quote_Number,

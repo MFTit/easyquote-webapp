@@ -1,149 +1,195 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>EasyQuote</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; background: #f9f9f9; font-size: 12px; }
-    .quote-box { background: #fff; border: 1px solid #ccc; padding: 20px; border-radius: 10px; max-width: 800px; margin: auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1); font-size: 12px; }
-    .header { text-align: center; }
-    .logo { height: 60px; display: block; margin: 0 auto; }
-    h1 { color: #333; margin: 10px 0; font-size: 16px; text-align: center; }
-    .status { font-weight: bold; padding: 2px 6px; border-radius: 3px; font-size: 12px; }
-    .status.Accepted { background: #d4edda; color: #155724; }
-    .status.Denied { background: #f8d7da; color: #721c24; }
-    .status.Negotiated { background: #fff3cd; color: #856404; }
-    .status.Pending { background: #cce5ff; color: #004085; }
-    .status.Discarded { background: #e2e3e5; color: #383d41; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { border: 1px solid #ddd; padding: 6px; text-align: left; font-size: 12px; }
-    th { background: #f4f4f4; }
-    .actions { margin-top: 15px; text-align: center; }
-    button { margin: 3px; padding: 6px 12px; font-size: 12px; cursor: pointer; border: none; border-radius: 3px; }
-    button.accept { background: #28a745; color: #fff; }
-    button.accept:hover { background: #218838; }
-    button.negotiate { background: #ffc107; color: #212529; }
-    button.negotiate:hover { background: #e0a800; }
-    button.denied { background: #dc3545; color: #fff; }
-    button.denied:hover { background: #c82333; }
-    .error { color: red; font-weight: bold; font-size: 12px; }
-    .success { color: green; font-weight: bold; font-size: 12px; }
-    .grand-total { text-align: right; font-weight: bold; font-size: 14px; margin-top: 10px; }
-
-    @media (max-width: 768px) {
-      body { margin: 10px; }
-      .quote-box { padding: 10px; }
-      h1 { font-size: 14px; }
-      .logo { height: 50px; }
-      table, thead, tbody, th, td, tr { display: block; width: 100%; }
-      th { display: none; }
-      tr { margin-bottom: 8px; }
-      td { border: none; padding: 4px 0; }
-      td::before { font-weight: bold; display: inline-block; width: 120px; }
-      td:nth-of-type(1)::before { content: "Produto: "; }
-      td:nth-of-type(2)::before { content: "Volume Litro: "; }
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      font-size: 12px;
     }
+    header {
+      text-align: center;
+      margin-bottom: 20px;
+      position: relative;
+    }
+    header img {
+      max-height: 60px;
+    }
+    .status-badge {
+      position: absolute;
+      right: 0;
+      top: 10px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-weight: bold;
+      font-size: 12px;
+      color: white;
+    }
+    .status-accepted { background: green; }
+    .status-negotiated { background: orange; }
+    .status-denied { background: red; }
+    .status-pending { background: gray; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background: #f2f2f2;
+    }
+    .grand-total-box {
+      margin-top: 15px;
+      display: flex;
+      justify-content: flex-end;
+    }
+    .grand-total {
+      border: 2px solid #333;
+      padding: 12px 20px;
+      border-radius: 8px;
+      background: #fefefe;
+      font-weight: bold;
+      font-size: 14px;
+      color: #000;
+      text-align: right;
+      min-width: 200px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    .actions {
+      margin-top: 20px;
+      text-align: center;
+    }
+    .actions button {
+      margin: 5px;
+      padding: 10px 20px;
+      font-size: 12px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      color: white;
+    }
+    .accept-btn { background: green; }
+    .negotiate-btn { background: orange; }
+    .deny-btn { background: red; }
   </style>
 </head>
 <body>
-  <div class="quote-box">
-    <div class="header">
-      <img src="/logo.png" alt="Company Logo" class="logo">
-      <h1 id="title">Loading Quote...</h1>
-    </div>
-    <p id="subtitle"></p>
-    <div id="details"></div>
-    <div id="items"></div>
-    <div id="grandtotal"></div>
-    <div id="terms"></div>
-    <div class="actions" id="actions"></div>
-  </div>
+  <header>
+    <img src="logo.png" alt="Company Logo" />
+    <div id="status"></div>
+  </header>
+
+  <h2 id="quote-number">Quotation</h2>
+  <div id="details"></div>
+
+  <table id="items">
+    <thead>
+      <tr>
+        <th>Produto</th>
+        <th>Volume (Litro)</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <div id="grandtotal"></div>
+  <p><b>Terms & Conditions:</b></p>
+  <p id="terms"></p>
+
+  <div class="actions" id="actions"></div>
 
   <script>
-    const qs = new URLSearchParams(window.location.search);
-    const qid = qs.get("qid");
-    const token = qs.get("token");
-
-    const el = (id) => document.getElementById(id);
+    const urlParams = new URLSearchParams(window.location.search);
+    const qid = urlParams.get("qid");
+    const token = urlParams.get("token");
 
     async function loadQuote() {
-      const r = await fetch(`/api/quote?qid=${encodeURIComponent(qid)}&token=${encodeURIComponent(token)}`);
-      const data = await r.json();
-
+      const resp = await fetch(`/api/quote?qid=${qid}&token=${token}`);
+      const data = await resp.json();
       if (!data.ok) {
-        el("title").innerText = "Quote Error";
-        el("subtitle").innerHTML = `<span class='error'>${data.error}</span>`;
+        document.body.innerHTML = `<p style="color:red;">${data.error || "Failed to load quote"}</p>`;
         return;
       }
 
       const q = data.data;
-      const status = (q.status || "Pending").trim();
+      document.getElementById("quote-number").innerText = "Quotation #" + q.quote_number;
 
-      el("title").innerText = "Quotation #" + q.quote_number;
+      // status badge
+      let statusClass = "status-pending";
+      if (q.status === "Accepted") statusClass = "status-accepted";
+      else if (q.status === "Negotiated") statusClass = "status-negotiated";
+      else if (q.status === "Denied") statusClass = "status-denied";
 
-      let statusHtml = `<span class="status ${status}">${status}`;
-      if (q.accepted_on) statusHtml += ` on ${q.accepted_on}`;
-      statusHtml += "</span>";
-      el("subtitle").innerHTML = `${statusHtml}`;
-
-      el("details").innerHTML = `
-        <p><b>CLIENTE:</b> ${q.contact_name || ""}</p>
-        <p><b>Company:</b> ${q.company || ""}</p>
-        <p style="text-align:right"><b>Valid Till:</b> ${q.valid_till || ""}</p>
+      document.getElementById("status").innerHTML = `
+        <span class="status-badge ${statusClass}">${q.status}</span>
       `;
 
-      let itemsHtml = `<table><tr><th>Produto</th><th>Volume Litro</th></tr>`;
-      (q.products || []).forEach(p => {
-        itemsHtml += `<tr><td>${p.product_name || ""}</td><td>${p.quantity ?? ""}</td></tr>`;
+      // details
+      document.getElementById("details").innerHTML = `
+        <p><b>CLIENTE:</b> ${q.contact_name || ""}</p>
+        <p><b>Company:</b> ${q.company || ""}</p>
+        <p style="text-align:right;"><b>Valid Till:</b> ${q.valid_till || ""}</p>
+      `;
+
+      // items
+      const tbody = document.querySelector("#items tbody");
+      tbody.innerHTML = q.products.map(p => `
+        <tr>
+          <td>${p.product_name || ""}</td>
+          <td>${p.quantity || 0}</td>
+        </tr>
+      `).join("");
+
+      // grand total with Brazilian currency formatting
+      const formatter = new Intl.NumberFormat("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+        minimumFractionDigits: 2,
       });
-      itemsHtml += "</table>";
-      el("items").innerHTML = itemsHtml;
 
-   el("grandtotal").innerHTML = `
-  <div class="grand-total-box">
-    <div class="grand-total">
-      Grand Total: ${q.grand_total}
-    </div>
-  </div>
-`;
+      document.getElementById("grandtotal").innerHTML = `
+        <div class="grand-total-box">
+          <div class="grand-total">
+            ${formatter.format(q.grand_total)}
+          </div>
+        </div>
+      `;
 
-      el("terms").innerHTML = "<h3>Terms & Conditions</h3><p>" + (q.terms || "None") + "</p>";
+      // terms
+      document.getElementById("terms").innerText = q.terms || "";
 
-      const actions = el("actions");
-      actions.innerHTML = "";
-      if (["Accepted", "Denied", "Discarded"].includes(status)) {
-        actions.innerHTML = `<p class='success'>This quote has been ${status}${q.accepted_on ? " on " + q.accepted_on : ""}.</p>`;
-        return;
+      // actions
+      const actions = document.getElementById("actions");
+      if (q.status === "Pending" || q.status === "Negotiated") {
+        actions.innerHTML = `
+          <button class="accept-btn" onclick="sendResponse('Accepted')">Accept</button>
+          <button class="negotiate-btn" onclick="sendResponse('Negotiated')">Negotiate</button>
+          <button class="deny-btn" onclick="sendResponse('Denied')">Deny</button>
+        `;
+      } else {
+        actions.innerHTML = "";
       }
-
-      const buttons = [
-        { label: "Accept", value: "Accepted", cls: "accept" },
-        { label: "Negotiate", value: "Negotiated", cls: "negotiate" },
-        { label: "Denied", value: "Denied", cls: "denied" },
-      ];
-      buttons.forEach(({label, value, cls}) => {
-        const btn = document.createElement("button");
-        btn.className = cls;
-        btn.innerText = label;
-        btn.onclick = () => doRespond(value);
-        actions.appendChild(btn);
-      });
     }
 
-    async function doRespond(action) {
-      const comment = prompt("Enter comment (optional):") || "";
+    async function sendResponse(action) {
+      const comment = prompt("Please enter your comment:") || "";
       const name = prompt("Please enter your name:") || "";
-
-      const r = await fetch("/api/respond", {
+      const resp = await fetch("/api/respond", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ qid, token, action, comment, name })
+        body: JSON.stringify({ qid, action, comment, name })
       });
-
-      const data = await r.json();
+      const data = await resp.json();
       if (data.ok) {
-        alert(`Quote updated as ${action}!`);
-        location.reload();
+        alert("Quote updated as " + action + "!");
+        window.location.reload();
       } else {
         alert("Failed: " + JSON.stringify(data));
       }

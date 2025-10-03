@@ -116,13 +116,17 @@
       const resp = await fetch(`/api/quote?qid=${qid}&token=${token}`);
       const data = await resp.json();
 
-      if (!data.ok) {
-        document.body.innerHTML = `
-          <h2 style="color:red; text-align:center;">${data.error}</h2>
-          <p style="text-align:center;">Para qualquer dúvida, entre em contato com o representante de vendas.</p>
-        `;
-        return;
-      }
+     if (!data.ok) {
+  document.body.innerHTML = `
+    <h2 style="color:red; text-align:center;">${data.error}</h2>
+    <pre style="font-size:10px; text-align:left; white-space:pre-wrap; max-width:100%; background:#f8f8f8; padding:10px; border:1px solid #ccc;">
+      ${JSON.stringify(data.crmRaw, null, 2)}
+    </pre>
+    <p style="text-align:center;">Para qualquer dúvida, entre em contato com o representante de vendas.</p>
+  `;
+  return;
+}
+
 
       const q = data.data;
       document.getElementById("quote-number").innerText = "Quotation #" + q.quote_number;

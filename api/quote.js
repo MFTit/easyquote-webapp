@@ -30,8 +30,11 @@ export default async function handler(req, res) {
 
     const q = crmData.data[0];
 
-    // Step 3: Token validation
-    if (q.Acceptance_Token !== token) {
+    // Debug log (check Vercel logs)
+    console.log("QuoteID:", qid, "CRM_Token:", q.Acceptance_Token, "URL_Token:", token, "Status:", q.Acceptance_Status);
+
+    // Step 3: Token validation (only if CRM has a token stored)
+    if (q.Acceptance_Token && q.Acceptance_Token !== token) {
       return res.status(403).json({ ok: false, error: "Invalid token" });
     }
 

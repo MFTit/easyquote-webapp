@@ -20,12 +20,21 @@ export default async function handler(req, res) {
     };
     const finalAction = norm(action);
 
-    // Step 1: refresh access token
+    // Step 1: Always refresh access token
     const tokenResp = await fetch(
       `${process.env.ZOHO_ACCOUNTS_URL}/oauth/v2/token?refresh_token=${process.env.ZOHO_REFRESH_TOKEN}&client_id=${process.env.ZOHO_CLIENT_ID}&client_secret=${process.env.ZOHO_CLIENT_SECRET}&grant_type=refresh_token`,
       { method: "POST" }
     );
     const tokenData = await tokenResp.json();
+
+    if (!tokenData.access_token) {
+      return res.status(401).json({
+        ok: false,
+        error: "Failed to refresh Zoho token",
+        raw: tokenData
+      });
+    }
+
     const accessToken = tokenData.access_token;
 
     // Helper: Zoho datetime (yyyy-MM-dd'T'HH:mm:ss)
@@ -41,7 +50,7 @@ export default async function handler(req, res) {
       );
     };
 
-    // Step 2: build update map
+    // Step 2: Build update map
     let updateMap = {
       Acceptance_Status: finalAction,  // "Accepted" / "Negotiated" / "Denied"
       Client_Response: comment || null,
@@ -53,7 +62,7 @@ export default async function handler(req, res) {
       updateMap.Acceptance_Token_Expires = formatZohoDate(new Date());
     }
 
-    // Step 3: update Quote in CRM
+    // Step 3: Update Quote in CRM
     const crmResp = await fetch(
       `${process.env.ZOHO_API_BASE}/crm/v2/Quotes/${qid}`,
       {
@@ -70,7 +79,11 @@ export default async function handler(req, res) {
 
     const first = crmData?.data?.[0];
     if (first && first.code === "SUCCESS") {
-      return res.status(200).json({ ok: true, action: finalAction, sent: updateMap });
+      return res.status(200).json({
+        ok: true,
+        action: finalAction,
+        sent: updateMap
+      });
     } else {
       return res.status(400).json({
         ok: false,

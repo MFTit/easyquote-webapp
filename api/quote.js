@@ -24,13 +24,14 @@ export default async function handler(req, res) {
     );
     const crmData = await crmResp.json();
 
-    if (!crmData.data || !crmData.data[0]) {
+   if (!crmData.data || !crmData.data[0]) {
   return res.status(404).json({
     ok: false,
     error: "Quote not found (Zoho response issue)",
-    crmRaw: crmData   // dump Zoho’s full reply
+    crmRaw: crmData // <-- Show exactly what Zoho sent back
   });
 }
+
 
 
     const q = crmData.data[0];

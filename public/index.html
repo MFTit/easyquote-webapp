@@ -32,6 +32,8 @@
     .status-negotiated { background: orange; }
     .status-denied { background: red; }
     .status-pending { background: gray; }
+    .status-expired { background: gray; }
+    .status-discarded { background: gray; }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -115,20 +117,9 @@
       const data = await resp.json();
 
       if (!data.ok) {
-        let msg = data.error || "Ocorreu um erro.";
-        let extra = "";
-
-        if (msg.includes("expired")) {
-          extra = "<p style='text-align:center; color:#555;'>Para qualquer dúvida, entre em contato com o representante de vendas.</p>";
-        } else if (msg.includes("Invalid")) {
-          extra = "<p style='text-align:center; color:#555;'>Este link de cotação não é válido. Por favor, solicite uma nova cotação ao seu representante.</p>";
-        } else if (msg.includes("not found")) {
-          extra = "<p style='text-align:center; color:#555;'>A cotação não foi encontrada. Verifique o link ou entre em contato com o representante de vendas.</p>";
-        }
-
         document.body.innerHTML = `
-          <h2 style="color:red; text-align:center;">${msg}</h2>
-          ${extra}
+          <h2 style="color:red; text-align:center;">${data.error}</h2>
+          <p style="text-align:center;">Para qualquer dúvida, entre em contato com o representante de vendas.</p>
         `;
         return;
       }
@@ -141,6 +132,8 @@
       if (q.status === "Accepted") statusClass = "status-accepted";
       else if (q.status === "Negotiated") statusClass = "status-negotiated";
       else if (q.status === "Denied") statusClass = "status-denied";
+      else if (q.status === "Expired") statusClass = "status-expired";
+      else if (q.status === "Discarded") statusClass = "status-discarded";
 
       document.getElementById("status").innerHTML = `
         <span class="status-badge ${statusClass}">${q.status}</span>
@@ -189,7 +182,11 @@
           <button class="deny-btn" onclick="sendResponse('Denied')">Deny</button>
         `;
       } else {
-        actions.innerHTML = "";
+        actions.innerHTML = `
+          <p style="text-align:center; color:#555; margin-top:10px;">
+            Para qualquer dúvida, entre em contato com o representante de vendas.
+          </p>
+        `;
       }
     }
 

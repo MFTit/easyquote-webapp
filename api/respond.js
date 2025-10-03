@@ -26,14 +26,14 @@ export default async function handler(req, res) {
     };
 
     // Store timestamp in CRM
-    const nowISO = new Date().toISOString(); // ISO 8601 for Zoho DateTime fields
+    const nowISO = new Date().toISOString(); 
     if (action === "Accepted") {
       updateMap.Acceptance_DateTime = nowISO;
-      updateMap.Acceptance_Token_Expires = nowISO; // also expire token
+      updateMap.Acceptance_Token_Expires = nowISO; // expire token
     }
     if (action === "Denied") {
       updateMap.Denied_DateTime = nowISO;
-      updateMap.Acceptance_Token_Expires = nowISO; // also expire token
+      updateMap.Acceptance_Token_Expires = nowISO; // expire token
     }
 
     // Step 3: Update Quote in CRM

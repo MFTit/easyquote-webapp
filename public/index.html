@@ -6,24 +6,18 @@
   <title>EasyQuote</title>
   <style>
     body {
-      font-family: "Arial", sans-serif;
+      font-family: Arial, sans-serif;
       margin: 20px;
       font-size: 12px;
-      background-color: #fff;
-      color: #222;
     }
-
     header {
       text-align: center;
       margin-bottom: 20px;
       position: relative;
     }
-
     header img {
       max-height: 60px;
-      width: auto;
     }
-
     .status-badge {
       position: absolute;
       right: 0;
@@ -41,25 +35,16 @@
     .status-expired { background: red; }
     .status-discarded { background: gray; }
 
-    h2 {
-      text-align: center;
-      font-size: 16px;
-      font-weight: bold;
-      margin: 10px 0;
-    }
-
     table {
       width: 100%;
       border-collapse: collapse;
       margin-top: 10px;
     }
-
     th, td {
       border: 1px solid #ddd;
       padding: 8px;
       text-align: left;
     }
-
     th {
       background: #f2f2f2;
     }
@@ -69,7 +54,6 @@
       display: flex;
       justify-content: flex-end;
     }
-
     .grand-total {
       border: 2px solid #333;
       padding: 12px 20px;
@@ -87,7 +71,6 @@
       margin-top: 20px;
       text-align: center;
     }
-
     .actions button {
       margin: 5px;
       padding: 10px 20px;
@@ -97,48 +80,68 @@
       cursor: pointer;
       color: white;
     }
-
     .accept-btn { background: green; }
     .negotiate-btn { background: orange; }
     .deny-btn { background: red; }
 
-    footer {
-      margin-top: 25px;
-      text-align: center;
-      font-size: 13px;
+    /* Inputs section */
+    .input-section {
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+    .input-group {
+      flex: 1;
+      min-width: 200px;
+    }
+    label {
       font-weight: bold;
-      color: white;
-      padding: 10px 15px;
+      display: block;
+      margin-bottom: 4px;
+    }
+    input[type="text"], textarea {
+      width: 100%;
+      padding: 6px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    textarea {
+      height: 70px;
+      resize: vertical;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 25px;
+      font-weight: bold;
+      padding: 10px;
       border-radius: 6px;
     }
+    footer.accepted { background: #d4edda; color: #155724; }
+    footer.denied, footer.discarded { background: #f8d7da; color: #721c24; }
+    footer.expired { background: #f0f0f0; color: #333; }
 
-    .footer-accepted { background: green; }
-    .footer-denied { background: red; }
-    .footer-expired { background: #a00; }
-    .footer-discarded { background: #777; }
-
-    /* Responsive */
     @media (max-width: 768px) {
-      body { font-size: 11px; margin: 10px; }
-      header img { max-height: 50px; }
-      .grand-total { font-size: 13px; min-width: 150px; }
-      .actions button { font-size: 11px; padding: 8px 14px; }
+      body { font-size: 11px; }
+      .actions button { width: 100%; margin-top: 8px; }
     }
-
     @media (max-width: 480px) {
-      h2 { font-size: 14px; }
-      .grand-total { font-size: 12px; }
-      footer { font-size: 12px; }
+      body { font-size: 10px; }
+      .input-section { flex-direction: column; }
+      .input-group { width: 100%; }
     }
   </style>
 </head>
 <body>
   <header>
-    <img src="logo.png" alt="Company Logo" />
+    <img src="logo.png" alt="Logo da Empresa" />
     <div id="status"></div>
   </header>
 
-  <h2>COTAÇÃO</h2>
+  <h2 id="quote-number" style="text-align:center;">COTAÇÃO</h2>
   <div id="details"></div>
 
   <table id="items">
@@ -152,12 +155,24 @@
   </table>
 
   <div id="grandtotal"></div>
-
   <p><b>Termos e Condições:</b></p>
   <p id="terms"></p>
 
+  <!-- Input section -->
+  <div class="input-section" id="response-section">
+    <div class="input-group">
+      <label for="ackBy">Nome</label>
+      <input type="text" id="ackBy" placeholder="Digite seu nome" />
+    </div>
+    <div class="input-group">
+      <label for="comment">Comentário</label>
+      <textarea id="comment" placeholder="Digite seu comentário"></textarea>
+    </div>
+  </div>
+
   <div class="actions" id="actions"></div>
-  <footer id="footer"></footer>
+
+  <footer id="footer-message"></footer>
 
   <script>
     const urlParams = new URLSearchParams(window.location.search);
@@ -177,13 +192,54 @@
       }
 
       const q = data.data;
-      document.getElementById("status").innerHTML = `<span class="status-badge status-${q.status.toLowerCase()}">${q.status}</span>`;
+      document.getElementById("quote-number").innerText = "COTAÇÃO";
 
+      // Status badge
+      let statusClass = "status-pending";
+      let statusText = q.status;
+      let footerMsg = "";
+      let footerClass = "";
+
+      if (q.status === "Accepted") {
+        statusClass = "status-accepted";
+        statusText = "Aceita";
+        footerClass = "accepted";
+        footerMsg = `Cotação foi Aceita por ${q.ack_by || ""} em ${new Date().toLocaleString("pt-BR")}`;
+      } 
+      else if (q.status === "Denied") {
+        statusClass = "status-denied";
+        statusText = "Recusada";
+        footerClass = "denied";
+        footerMsg = `Cotação foi Recusada por ${q.ack_by || ""} em ${new Date().toLocaleString("pt-BR")}`;
+      }
+      else if (q.status === "Negotiated") {
+        statusClass = "status-negotiated";
+        statusText = "Em Negociação";
+      }
+      else if (q.status === "Expired") {
+        statusClass = "status-expired";
+        statusText = "Expirada";
+        footerClass = "expired";
+        footerMsg = "Esta cotação expirou.";
+      }
+      else if (q.status === "Discarded") {
+        statusClass = "status-discarded";
+        statusText = "Descartada";
+        footerClass = "discarded";
+        footerMsg = "Cotação descartada. Para qualquer dúvida, entre em contato com o representante de vendas.";
+      }
+
+      document.getElementById("status").innerHTML = `<span class="status-badge ${statusClass}">${statusText}</span>`;
+      document.getElementById("footer-message").className = footerClass;
+      document.getElementById("footer-message").innerText = footerMsg;
+
+      // Details
       document.getElementById("details").innerHTML = `
         <p><b>CLIENTE:</b> ${q.company || ""}</p>
         <p style="text-align:right;"><b>Válido até:</b> ${q.valid_till || ""}</p>
       `;
 
+      // Items
       const tbody = document.querySelector("#items tbody");
       tbody.innerHTML = q.products.map(p => `
         <tr>
@@ -192,6 +248,7 @@
         </tr>
       `).join("");
 
+      // Grand total
       const formatter = new Intl.NumberFormat("pt-BR", {
         style: "currency",
         currency: "BRL",
@@ -205,9 +262,8 @@
 
       document.getElementById("terms").innerText = q.terms || "";
 
+      // Buttons
       const actions = document.getElementById("actions");
-      const footer = document.getElementById("footer");
-
       if (q.status === "Pending" || q.status === "Negotiated") {
         actions.innerHTML = `
           <button class="accept-btn" onclick="sendResponse('Accepted')">Aceitar</button>
@@ -216,23 +272,21 @@
         `;
       } else {
         actions.innerHTML = "";
-        if (q.status === "Accepted") footer.className = "footer-accepted";
-        if (q.status === "Denied") footer.className = "footer-denied";
-        if (q.status === "Expired") footer.className = "footer-expired";
-        if (q.status === "Discarded") footer.className = "footer-discarded";
-
-        const formattedDate = new Date().toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
-
-        if (q.status === "Accepted") footer.innerText = `Cotação foi Aceita por ${q.acknowledged_by || "Cliente"} em ${formattedDate}`;
-        else if (q.status === "Denied") footer.innerText = `Cotação foi Recusada por ${q.acknowledged_by || "Cliente"} em ${formattedDate}`;
-        else if (q.status === "Expired") footer.innerText = `Cotação Expirada`;
-        else if (q.status === "Discarded") footer.innerText = `Cotação foi Descartada. Para qualquer dúvida, entre em contato com o representante de vendas.`;
       }
     }
 
     async function sendResponse(action) {
-      const name = prompt("Por favor, insira o seu nome:") || "";
-      const comment = prompt("Por favor, insira seu comentário:") || "";
+      const name = document.getElementById("ackBy").value.trim();
+      const comment = document.getElementById("comment").value.trim();
+
+      if ((action === "Denied" || action === "Negotiated") && (!name || !comment)) {
+        alert("Por favor, preencha o Nome e o Comentário antes de continuar.");
+        return;
+      }
+      if (action === "Accepted" && !name) {
+        alert("Por favor, preencha o Nome antes de aceitar.");
+        return;
+      }
 
       const resp = await fetch("/api/respond", {
         method: "POST",
@@ -241,10 +295,10 @@
       });
       const data = await resp.json();
       if (data.ok) {
-        alert("Cotação atualizada como " + action + "!");
+        alert(`Cotação atualizada como ${action}!`);
         window.location.reload();
       } else {
-        alert("Falhou: " + JSON.stringify(data));
+        alert("Falha: " + JSON.stringify(data));
       }
     }
 

@@ -194,7 +194,7 @@
       const q = data.data;
       document.getElementById("quote-number").innerText = "COTAÇÃO";
 
-      // Status badge
+      // Status badge and footer logic
       let statusClass = "status-pending";
       let statusText = q.status;
       let footerMsg = "";
@@ -262,8 +262,34 @@
 
       document.getElementById("terms").innerText = q.terms || "";
 
-      document.getElementById("ackBy").value = q.ack_by || "";
-document.getElementById("comment").value = q.client_response || "";
+      // ✅ Prefill and manage input visibility
+      const ackField = document.getElementById("ackBy");
+      const commentField = document.getElementById("comment");
+      const responseSection = document.getElementById("response-section");
+
+      ackField.value = q.ack_by || "";
+      commentField.value = q.client_response || "";
+
+      if (q.status === "Accepted" || q.status === "Denied") {
+        // Show but greyed out
+        ackField.readOnly = true;
+        commentField.readOnly = true;
+        ackField.style.backgroundColor = "#f2f2f2";
+        commentField.style.backgroundColor = "#f2f2f2";
+        responseSection.style.display = "flex";
+      } 
+      else if (q.status === "Expired" || q.status === "Discarded") {
+        // Hide input section
+        responseSection.style.display = "none";
+      } 
+      else {
+        // Pending or Negotiated
+        ackField.readOnly = false;
+        commentField.readOnly = false;
+        ackField.style.backgroundColor = "#fff";
+        commentField.style.backgroundColor = "#fff";
+        responseSection.style.display = "flex";
+      }
 
       // Buttons
       const actions = document.getElementById("actions");

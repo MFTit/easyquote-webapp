@@ -262,6 +262,9 @@
 
       document.getElementById("terms").innerText = q.terms || "";
 
+      document.getElementById("ackBy").value = q.ack_by || "";
+document.getElementById("comment").value = q.client_response || "";
+
       // Buttons
       const actions = document.getElementById("actions");
       if (q.status === "Pending" || q.status === "Negotiated") {

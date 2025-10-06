@@ -6,18 +6,24 @@
   <title>EasyQuote</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
+      font-family: "Arial", sans-serif;
       margin: 20px;
       font-size: 12px;
+      background-color: #fff;
+      color: #222;
     }
+
     header {
       text-align: center;
       margin-bottom: 20px;
       position: relative;
     }
+
     header img {
       max-height: 60px;
+      width: auto;
     }
+
     .status-badge {
       position: absolute;
       right: 0;
@@ -39,7 +45,7 @@
       text-align: center;
       font-size: 16px;
       font-weight: bold;
-      margin-bottom: 10px;
+      margin: 10px 0;
     }
 
     table {
@@ -47,11 +53,13 @@
       border-collapse: collapse;
       margin-top: 10px;
     }
+
     th, td {
       border: 1px solid #ddd;
       padding: 8px;
       text-align: left;
     }
+
     th {
       background: #f2f2f2;
     }
@@ -61,6 +69,7 @@
       display: flex;
       justify-content: flex-end;
     }
+
     .grand-total {
       border: 2px solid #333;
       padding: 12px 20px;
@@ -78,6 +87,7 @@
       margin-top: 20px;
       text-align: center;
     }
+
     .actions button {
       margin: 5px;
       padding: 10px 20px;
@@ -87,9 +97,39 @@
       cursor: pointer;
       color: white;
     }
+
     .accept-btn { background: green; }
     .negotiate-btn { background: orange; }
     .deny-btn { background: red; }
+
+    footer {
+      margin-top: 25px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: bold;
+      color: white;
+      padding: 10px 15px;
+      border-radius: 6px;
+    }
+
+    .footer-accepted { background: green; }
+    .footer-denied { background: red; }
+    .footer-expired { background: #a00; }
+    .footer-discarded { background: #777; }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      body { font-size: 11px; margin: 10px; }
+      header img { max-height: 50px; }
+      .grand-total { font-size: 13px; min-width: 150px; }
+      .actions button { font-size: 11px; padding: 8px 14px; }
+    }
+
+    @media (max-width: 480px) {
+      h2 { font-size: 14px; }
+      .grand-total { font-size: 12px; }
+      footer { font-size: 12px; }
+    }
   </style>
 </head>
 <body>
@@ -105,17 +145,19 @@
     <thead>
       <tr>
         <th>Produto</th>
-        <th>Volume (Litros)</th>
+        <th>Volume (Litro)</th>
       </tr>
     </thead>
     <tbody></tbody>
   </table>
 
   <div id="grandtotal"></div>
+
   <p><b>Termos e Condições:</b></p>
   <p id="terms"></p>
 
   <div class="actions" id="actions"></div>
+  <footer id="footer"></footer>
 
   <script>
     const urlParams = new URLSearchParams(window.location.search);
@@ -135,27 +177,13 @@
       }
 
       const q = data.data;
+      document.getElementById("status").innerHTML = `<span class="status-badge status-${q.status.toLowerCase()}">${q.status}</span>`;
 
-      // Status
-      let statusClass = "status-pending";
-      let statusText = q.status;
-      if (q.status === "Accepted") statusClass = "status-accepted", statusText = "Aceito";
-      else if (q.status === "Denied") statusClass = "status-denied", statusText = "Recusado";
-      else if (q.status === "Negotiated") statusClass = "status-negotiated", statusText = "Negociado";
-      else if (q.status === "Expired") statusClass = "status-expired", statusText = "Expirado";
-      else if (q.status === "Discarded") statusClass = "status-discarded", statusText = "Descartado";
-
-      document.getElementById("status").innerHTML = `
-        <span class="status-badge ${statusClass}">${statusText}</span>
-      `;
-
-      // Details
       document.getElementById("details").innerHTML = `
         <p><b>CLIENTE:</b> ${q.company || ""}</p>
         <p style="text-align:right;"><b>Válido até:</b> ${q.valid_till || ""}</p>
       `;
 
-      // Items
       const tbody = document.querySelector("#items tbody");
       tbody.innerHTML = q.products.map(p => `
         <tr>
@@ -164,8 +192,11 @@
         </tr>
       `).join("");
 
-      // Grand total
-      const formatter = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+      const formatter = new Intl.NumberFormat("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+        minimumFractionDigits: 2,
+      });
       document.getElementById("grandtotal").innerHTML = `
         <div class="grand-total-box">
           <div class="grand-total">${formatter.format(q.grand_total)}</div>
@@ -174,8 +205,9 @@
 
       document.getElementById("terms").innerText = q.terms || "";
 
-      // Buttons
       const actions = document.getElementById("actions");
+      const footer = document.getElementById("footer");
+
       if (q.status === "Pending" || q.status === "Negotiated") {
         actions.innerHTML = `
           <button class="accept-btn" onclick="sendResponse('Accepted')">Aceitar</button>
@@ -183,15 +215,25 @@
           <button class="deny-btn" onclick="sendResponse('Denied')">Recusar</button>
         `;
       } else {
-        actions.innerHTML = `
-          <p style="text-align:center; color:#555;">Para qualquer dúvida, entre em contato com o representante de vendas.</p>
-        `;
+        actions.innerHTML = "";
+        if (q.status === "Accepted") footer.className = "footer-accepted";
+        if (q.status === "Denied") footer.className = "footer-denied";
+        if (q.status === "Expired") footer.className = "footer-expired";
+        if (q.status === "Discarded") footer.className = "footer-discarded";
+
+        const formattedDate = new Date().toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+
+        if (q.status === "Accepted") footer.innerText = `Cotação foi Aceita por ${q.acknowledged_by || "Cliente"} em ${formattedDate}`;
+        else if (q.status === "Denied") footer.innerText = `Cotação foi Recusada por ${q.acknowledged_by || "Cliente"} em ${formattedDate}`;
+        else if (q.status === "Expired") footer.innerText = `Cotação Expirada`;
+        else if (q.status === "Discarded") footer.innerText = `Cotação foi Descartada. Para qualquer dúvida, entre em contato com o representante de vendas.`;
       }
     }
 
     async function sendResponse(action) {
-      const comment = prompt("Digite seu comentário:") || "";
-      const name = prompt("Digite seu nome:") || "";
+      const name = prompt("Por favor, insira o seu nome:") || "";
+      const comment = prompt("Por favor, insira seu comentário:") || "";
+
       const resp = await fetch("/api/respond", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -210,4 +252,3 @@
   </script>
 </body>
 </html>
-

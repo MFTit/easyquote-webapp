@@ -280,7 +280,7 @@
       const comment = document.getElementById("comment").value.trim();
 
       if ((action === "Denied" || action === "Negotiated") && (!name || !comment)) {
-        alert("Por favor, preencha o Nome e o Comentário antes de continuar.");
+        alert("Por favor, preencha os Comentários em caso de negação ou negociação.");
         return;
       }
       if (action === "Accepted" && !name) {

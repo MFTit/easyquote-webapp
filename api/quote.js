@@ -72,6 +72,7 @@ export default async function handler(req, res) {
       company: q.Account_Name?.name || "",
       valid_till: q.Valid_Till,
       status,
+      ack_by: q.Acknowledged_By || q.Ack_By || q.Acceptance_Ack_By || "",
       grand_total: q.Grand_Total,
       terms: q.Terms_and_Conditions,
       products: (q.Product_Details || []).map((p) => ({

@@ -46,7 +46,7 @@ export default async function handler(req, res) {
     };
 
     const doUpdate = async () => {
-      const crmResp = await fetch(`${process.env.ZOHO_API_BASE}/crm/v2/Quotes/${qid}`, {
+      const crmResp = await fetch(`${process.env.ZOHO_API_BASE}/crm/v6/Quotes/${qid}`, {
         method: "PUT",
         headers: {
           Authorization: `Zoho-oauthtoken ${accessToken}`,

@@ -12,7 +12,7 @@ export default async function handler(req, res) {
 
     const fetchQuote = async () => {
       const crmResp = await fetch(
-        `${process.env.ZOHO_API_BASE}/crm/v2/Quotes/${qid}`,
+        `${process.env.ZOHO_API_BASE}/crm/v6/Quotes/${qid}`,
         {
           method: "GET",
           headers: { Authorization: `Zoho-oauthtoken ${accessToken}` },

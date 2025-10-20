@@ -36,7 +36,7 @@ export default async function handler(req, res) {
       const second = await fetchQuote();
       crmData = second.data;
     }
-console.log("ZOHO CRM RESPONSE:", crmData);
+
     if (!crmData.data || !crmData.data[0]) {
       return res
         .status(404)

@@ -9,7 +9,7 @@ export default async function handler(req, res) {
   const client_id = process.env.ZOHO_CLIENT_ID;
   const client_secret = process.env.ZOHO_CLIENT_SECRET;
 
-  const tokenUrl = `https://accounts.zoho.com/oauth/v2/token?grant_type=authorization_code&client_id=${client_id}&client_secret=${client_secret}&redirect_uri=https://easyquote-zoho.vercel.app/api/oauth/callback&code=${code}`;
+  const tokenUrl = `https://accounts.zoho.com/oauth/v6/token?grant_type=authorization_code&client_id=${client_id}&client_secret=${client_secret}&redirect_uri=https://easyquote-zoho.vercel.app/api/oauth/callback&code=${code}`;
 
   try {
     const response = await fetch(tokenUrl, { method: "POST" });

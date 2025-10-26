@@ -4,5 +4,8 @@
   "private": true,
   "dependencies": {
     "puppeteer": "^22.6.4"
+  },
+  "scripts": {
+    "postinstall": "npx puppeteer browsers install chrome"
   }
 }

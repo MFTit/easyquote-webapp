@@ -3,12 +3,19 @@ import chromium from "@sparticuz/chromium-min";
 
 export default async function handler(req, res) {
   try {
-    const { html, filename } = await req.json();
+    // Parse request body properly for Vercel
+    const buffers = [];
+    for await (const chunk of req) {
+      buffers.push(chunk);
+    }
+    const data = Buffer.concat(buffers).toString();
+    const { html, filename } = JSON.parse(data || "{}");
 
     if (!html) {
       return res.status(400).json({ error: "Missing HTML content." });
     }
 
+    // Launch browser (Chromium)
     const browser = await puppeteer.launch({
       args: chromium.args,
       executablePath: await chromium.executablePath(),

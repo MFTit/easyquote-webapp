@@ -9,37 +9,35 @@ export default async function handler(req, res) {
 
     const accessToken = await getZohoAccessToken();
 
-    // 1️⃣ Fetch quote from Zoho
+    // 1️⃣ Fetch quote from Zoho CRM
     const quoteResp = await fetch(`${process.env.ZOHO_API_BASE}/crm/v6/Quotes/${qid}`, {
       headers: { Authorization: `Zoho-oauthtoken ${accessToken}` },
     });
     const quoteData = await quoteResp.json();
     const q = quoteData.data?.[0];
-
     if (!q) return res.status(404).json({ error: "Quote not found" });
 
     const status = q.Acceptance_Status || q.Status || "Pending";
-
-    // 🚫 Only generate PDF if quote is Accepted
     if (status !== "Accepted") {
       return res.status(200).json({ ok: false, message: `Quote status is '${status}', skipping PDF generation.` });
     }
 
-    // 2️⃣ Generate PDF from the public HTML page
-    const url = `https://easyquote-pearl.vercel.app/?qid=${qid}&token=${q.Acceptance_Token}`;
-    const browser = await puppeteer.launch(
-      await chromium.puppeteer.launch({
-        args: chromium.args,
-        defaultViewport: chromium.defaultViewport,
-        executablePath: await chromium.executablePath,
-        headless: true,
-      })
-    );
+    // 2️⃣ Launch headless Chrome correctly for Vercel
+    const executablePath = await chromium.executablePath;
+    const browser = await puppeteer.launch({
+      args: chromium.args,
+      executablePath: executablePath || "/usr/bin/chromium-browser",
+      headless: chromium.headless,
+      ignoreHTTPSErrors: true,
+    });
 
+    // 3️⃣ Render the public quote HTML
+    const url = `https://easyquote-pearl.vercel.app/?qid=${qid}&token=${q.Acceptance_Token}`;
     const page = await browser.newPage();
     await page.goto(url, { waitUntil: "networkidle0" });
     await page.waitForTimeout(1500);
 
+    // 4️⃣ Generate PDF
     const pdfBuffer = await page.pdf({
       format: "A4",
       printBackground: true,
@@ -48,7 +46,7 @@ export default async function handler(req, res) {
 
     await browser.close();
 
-    // 3️⃣ Upload to Zoho as attachment
+    // 5️⃣ Upload PDF to Zoho CRM Attachments
     const formData = new FormData();
     formData.append("file", new Blob([pdfBuffer], { type: "application/pdf" }), `Quote_${qid}.pdf`);
 
@@ -59,11 +57,7 @@ export default async function handler(req, res) {
     });
 
     const uploadText = await upload.text();
-
-    return res.status(200).json({
-      ok: true,
-      uploaded: uploadText.substring(0, 200),
-    });
+    return res.status(200).json({ ok: true, uploaded: uploadText.substring(0, 200) });
   } catch (err) {
     console.error("PDF Error:", err);
     return res.status(500).json({ ok: false, error: err.message });

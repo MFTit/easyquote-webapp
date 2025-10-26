@@ -9,7 +9,7 @@ export default async function handler(req, res) {
 
     const accessToken = await getZohoAccessToken();
 
-    // 1️⃣ Fetch quote from Zoho CRM
+    // 1️⃣ Get quote info
     const quoteResp = await fetch(`${process.env.ZOHO_API_BASE}/crm/v6/Quotes/${qid}`, {
       headers: { Authorization: `Zoho-oauthtoken ${accessToken}` },
     });
@@ -22,16 +22,15 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: false, message: `Quote status is '${status}', skipping PDF generation.` });
     }
 
-    // 2️⃣ Launch headless Chrome correctly for Vercel
-    const executablePath = await chromium.executablePath;
+    // 2️⃣ Launch Chrome correctly for Vercel
     const browser = await puppeteer.launch({
       args: chromium.args,
-      executablePath: executablePath || "/usr/bin/chromium-browser",
-      headless: chromium.headless,
-      ignoreHTTPSErrors: true,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath,
+      headless: true,
     });
 
-    // 3️⃣ Render the public quote HTML
+    // 3️⃣ Render your public quote page
     const url = `https://easyquote-pearl.vercel.app/?qid=${qid}&token=${q.Acceptance_Token}`;
     const page = await browser.newPage();
     await page.goto(url, { waitUntil: "networkidle0" });
@@ -46,7 +45,7 @@ export default async function handler(req, res) {
 
     await browser.close();
 
-    // 5️⃣ Upload PDF to Zoho CRM Attachments
+    // 5️⃣ Upload to Zoho
     const formData = new FormData();
     formData.append("file", new Blob([pdfBuffer], { type: "application/pdf" }), `Quote_${qid}.pdf`);
 

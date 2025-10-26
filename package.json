@@ -1,5 +1,9 @@
 {
   "name": "easyquote-pearl",
   "version": "1.0.0",
-  "private": true
+  "private": true,
+  "dependencies": {
+    "chrome-aws-lambda": "^10.1.0",
+    "puppeteer-core": "^19.11.1"
+  }
 }

@@ -1,9 +1,5 @@
-
-
 {
   "name": "easyquote-pearl",
   "version": "1.0.0",
-  "dependencies": {
-    "pdf-lib": "^1.17.1"
-  }
+  "private": true
 }

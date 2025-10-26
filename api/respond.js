@@ -11,7 +11,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Missing qid or action" });
     }
 
-    // Normalize action
+    // Normalize the action value
     const norm = (s) => {
       const t = String(s || "").toLowerCase();
       if (t.startsWith("accept")) return "Accepted";
@@ -21,9 +21,10 @@ export default async function handler(req, res) {
     };
     const finalAction = norm(action);
 
+    // Get Zoho Access Token
     let accessToken = await getZohoAccessToken();
 
-    // Helper: Zoho datetime
+    // Format timestamp for Zoho CRM
     const formatZohoDate = (d) => {
       const pad = (n) => String(n).padStart(2, "0");
       return (
@@ -36,9 +37,9 @@ export default async function handler(req, res) {
       );
     };
 
-    // Prepare update
+    // Prepare CRM update payload
     const updateMap = {
-      Acceptance_Status: finalAction,  // "Accepted" / "Negotiated" / "Denied"
+      Acceptance_Status: finalAction, // "Accepted" / "Negotiated" / "Denied"
       Client_Response: comment || null,
       Acknowledged_By: name || null,
       ...(finalAction === "Accepted" || finalAction === "Denied"
@@ -46,8 +47,9 @@ export default async function handler(req, res) {
         : {}),
     };
 
+    // Helper to update record
     const doUpdate = async () => {
-      const crmResp = await fetch(`${process.env.ZOHO_API_BASE}/crm/v2/Quotes/${qid}`, {
+      const crmResp = await fetch(`${process.env.ZOHO_API_BASE}/crm/v6/Quotes/${qid}`, {
         method: "PUT",
         headers: {
           Authorization: `Zoho-oauthtoken ${accessToken}`,
@@ -75,25 +77,37 @@ export default async function handler(req, res) {
       crmData = second.data;
     }
 
- const first = crmData?.data?.[0];
-if (first && first.code === "SUCCESS") {
-  // ✅ Generate PDF only when quote is Accepted
-  if (finalAction === "Accepted") {
-    fetch(`https://easyquote-pearl.vercel.app/api/pdf?qid=${qid}`)
-      .catch(e => console.error("PDF generation error:", e));
-  }
+    const first = crmData?.data?.[0];
+    if (first && first.code === "SUCCESS") {
+      // ✅ Generate PDF only when quote is Accepted
+      if (finalAction === "Accepted") {
+        try {
+          await fetch(`${process.env.ZOHO_API_BASE}/crm/v6/functions/Generate_PDF_On_Accepted_Quote/actions/execute`, {
+            method: "POST",
+            headers: {
+              Authorization: `Zoho-oauthtoken ${accessToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ arguments: { quoteId: qid } }),
+          });
+          console.log("PDF generation triggered for quote:", qid);
+        } catch (pdfErr) {
+          console.error("Zoho PDF generation error:", pdfErr);
+        }
+      }
 
-  // then return normal response to client
-  return res.status(200).json({ ok: true, action: finalAction, sent: updateMap });
-} else {
-  return res.status(400).json({
-    ok: false,
-    message: "Zoho did not accept the update",
-    sent: updateMap,
-    crmRaw: crmData,
-  });
-}
+      // ✅ Success response
+      return res.status(200).json({ ok: true, action: finalAction, sent: updateMap });
+    } else {
+      return res.status(400).json({
+        ok: false,
+        message: "Zoho did not accept the update",
+        sent: updateMap,
+        crmRaw: crmData,
+      });
+    }
   } catch (err) {
+    console.error("Respond.js Error:", err);
     return res.status(500).json({ error: err.message });
   }
 }

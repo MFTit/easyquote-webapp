@@ -1,5 +1,4 @@
-import chromium from "chrome-aws-lambda";
-import puppeteer from "puppeteer-core";
+import puppeteer from "puppeteer";
 import { getZohoAccessToken } from "../lib/zohoAuth.js";
 
 export default async function handler(req, res) {
@@ -9,7 +8,7 @@ export default async function handler(req, res) {
 
     const accessToken = await getZohoAccessToken();
 
-    // 1️⃣ Get quote info
+    // 1️⃣ Fetch the quote from Zoho
     const quoteResp = await fetch(`${process.env.ZOHO_API_BASE}/crm/v6/Quotes/${qid}`, {
       headers: { Authorization: `Zoho-oauthtoken ${accessToken}` },
     });
@@ -22,19 +21,17 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: false, message: `Quote status is '${status}', skipping PDF generation.` });
     }
 
-    // 2️⃣ Launch Chrome correctly for Vercel
+    // 2️⃣ Launch Puppeteer normally (Vercel Node 22 runtime supports it)
     const browser = await puppeteer.launch({
-      args: chromium.args,
-      defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath,
-      headless: true,
+      headless: "new", // modern headless mode
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
 
-    // 3️⃣ Render your public quote page
+    // 3️⃣ Render your public quote HTML
     const url = `https://easyquote-pearl.vercel.app/?qid=${qid}&token=${q.Acceptance_Token}`;
     const page = await browser.newPage();
     await page.goto(url, { waitUntil: "networkidle0" });
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(1000);
 
     // 4️⃣ Generate PDF
     const pdfBuffer = await page.pdf({
@@ -45,7 +42,7 @@ export default async function handler(req, res) {
 
     await browser.close();
 
-    // 5️⃣ Upload to Zoho
+    // 5️⃣ Upload to Zoho CRM
     const formData = new FormData();
     formData.append("file", new Blob([pdfBuffer], { type: "application/pdf" }), `Quote_${qid}.pdf`);
 

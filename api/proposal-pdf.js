@@ -9,7 +9,6 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Missing HTML content." });
     }
 
-    // Configure headless Chromium (for Vercel)
     const browser = await puppeteer.launch({
       args: chromium.args,
       executablePath: await chromium.executablePath(),
@@ -19,7 +18,6 @@ export default async function handler(req, res) {
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "networkidle0" });
 
-    // Generate PDF
     const pdfBuffer = await page.pdf({
       format: "A4",
       printBackground: true,

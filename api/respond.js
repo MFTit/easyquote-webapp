@@ -1,106 +1,92 @@
 import { getZohoAccessToken, invalidateZohoToken } from "../lib/zohoAuth.js";
-import { PDFDocument, StandardFonts } from "pdf-lib";
-
-async function updateQuote(qid, data, accessToken) {
-  const resp = await fetch(`${process.env.ZOHO_API_BASE}/crm/v6/Quotes/${qid}`, {
-    method: "PUT",
-    headers: {
-      Authorization: `Zoho-oauthtoken ${accessToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ data: [data] }),
-  });
-  return resp.json();
-}
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).json({ error: "Only POST allowed" });
-
-  const { qid, action, comment, name } = req.body;
-  if (!qid || !action) return res.status(400).json({ error: "Missing qid or action" });
-
-  const s = action.toLowerCase();
-  const status = s.startsWith("accept") ? "Accepted" : s.startsWith("deny") ? "Denied" : "Negotiated";
-
-  let accessToken = await getZohoAccessToken();
-  let debugNote = `[${new Date().toISOString()}] Action: ${status}`;
+  if (req.method !== "POST") {
+    return res.status(405).json({ error: "Only POST allowed" });
+  }
 
   try {
+    const { qid, action, comment, name } = req.body;
+    if (!qid || !action) {
+      return res.status(400).json({ error: "Missing qid or action" });
+    }
+
+    // Normalize action
+    const norm = (s) => {
+      const t = String(s || "").toLowerCase();
+      if (t.startsWith("accept")) return "Accepted";
+      if (t.startsWith("deny")) return "Denied";
+      if (t.startsWith("nego")) return "Negotiated";
+      return s;
+    };
+    const finalAction = norm(action);
+
+    let accessToken = await getZohoAccessToken();
+
+    // Helper: Zoho datetime
+    const formatZohoDate = (d) => {
+      const pad = (n) => String(n).padStart(2, "0");
+      return (
+        d.getFullYear() +
+        "-" + pad(d.getMonth() + 1) +
+        "-" + pad(d.getDate()) +
+        "T" + pad(d.getHours()) +
+        ":" + pad(d.getMinutes()) +
+        ":" + pad(d.getSeconds())
+      );
+    };
+
+    // Prepare update
     const updateMap = {
-      Acceptance_Status: status,
+      Acceptance_Status: finalAction,  // "Accepted" / "Negotiated" / "Denied"
       Client_Response: comment || null,
       Acknowledged_By: name || null,
-      ...(status === "Accepted" || status === "Denied"
-        ? { Acceptance_Token_Expires: new Date().toISOString() }
+      ...(finalAction === "Accepted" || finalAction === "Denied"
+        ? { Acceptance_Token_Expires: formatZohoDate(new Date()) }
         : {}),
     };
 
-    let crmUpdate = await updateQuote(qid, updateMap, accessToken);
-    if (crmUpdate?.code === "INVALID_TOKEN") {
+    const doUpdate = async () => {
+      const crmResp = await fetch(`${process.env.ZOHO_API_BASE}/crm/v2/Quotes/${qid}`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Zoho-oauthtoken ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ data: [updateMap] }),
+      });
+      const data = await crmResp.json();
+      return { status: crmResp.status, data };
+    };
+
+    // First attempt
+    let { data: crmData } = await doUpdate();
+
+    // Retry once on INVALID_TOKEN
+    if (
+      (crmData?.code === "INVALID_TOKEN" ||
+        crmData?.message === "invalid oauth token" ||
+        crmData?.data?.[0]?.code === "INVALID_TOKEN") &&
+      !req._retried
+    ) {
       invalidateZohoToken();
       accessToken = await getZohoAccessToken();
-      crmUpdate = await updateQuote(qid, updateMap, accessToken);
+      const second = await doUpdate();
+      crmData = second.data;
     }
 
-    // ✅ PDF generation only when Accepted
-    if (status === "Accepted") {
-      try {
-        const quoteResp = await fetch(`${process.env.ZOHO_API_BASE}/crm/v6/Quotes/${qid}`, {
-          headers: { Authorization: `Zoho-oauthtoken ${accessToken}` },
-        });
-        const qData = await quoteResp.json();
-        const q = qData.data?.[0];
-
-        if (q) {
-          const pdf = await PDFDocument.create();
-          const font = await pdf.embedFont(StandardFonts.Helvetica);
-          const page = pdf.addPage([595, 842]);
-          const { height } = page.getSize();
-          const draw = (t, y, x = 50, size = 12) =>
-            page.drawText(t, { x, y: height - y, size, font });
-
-          draw("COTAÇÃO ACEITA", 50, 200, 18);
-          draw(`Número: ${q.Quote_Number}`, 90);
-          draw(`Cliente: ${q.Account_Name?.name || ""}`, 120);
-          draw(`Valor total: ${q.Grand_Total || ""}`, 150);
-          draw(`Aceito por: ${name}`, 180);
-          draw(`Comentário: ${comment || ""}`, 210);
-          draw(`Data: ${new Date().toLocaleString("pt-BR")}`, 240);
-
-          const pdfBytes = await pdf.save();
-
-          const form = new FormData();
-          form.append(
-            "file",
-            new Blob([pdfBytes], { type: "application/pdf" }),
-            `Quote_${qid}.pdf`
-          );
-
-          const upload = await fetch(
-            `${process.env.ZOHO_API_BASE}/crm/v6/Quotes/${qid}/Attachments`,
-            {
-              method: "POST",
-              headers: { Authorization: `Zoho-oauthtoken ${accessToken}` },
-              body: form,
-            }
-          );
-
-          const uploadResult = await upload.text();
-          debugNote += ` | PDF upload response: ${uploadResult.substring(0, 300)}...`;
-        } else {
-          debugNote += " | No quote data returned from Zoho.";
-        }
-      } catch (pdfErr) {
-        debugNote += ` | PDF error: ${pdfErr.message}`;
-      }
+    const first = crmData?.data?.[0];
+    if (first && first.code === "SUCCESS") {
+      return res.status(200).json({ ok: true, action: finalAction, sent: updateMap });
+    } else {
+      return res.status(400).json({
+        ok: false,
+        message: "Zoho did not accept the update",
+        sent: updateMap,
+        crmRaw: crmData,
+      });
     }
-
-    // 🪶 Always update Integration_Log field
-    await updateQuote(qid, { Integration_Log: debugNote }, accessToken);
-
-    return res.status(200).json({ ok: true, action: status, note: debugNote });
   } catch (err) {
-    await updateQuote(qid, { Integration_Log: `Error: ${err.message}` }, accessToken);
     return res.status(500).json({ error: err.message });
   }
 }

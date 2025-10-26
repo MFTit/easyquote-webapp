@@ -75,17 +75,24 @@ export default async function handler(req, res) {
       crmData = second.data;
     }
 
-    const first = crmData?.data?.[0];
-    if (first && first.code === "SUCCESS") {
-      return res.status(200).json({ ok: true, action: finalAction, sent: updateMap });
-    } else {
-      return res.status(400).json({
-        ok: false,
-        message: "Zoho did not accept the update",
-        sent: updateMap,
-        crmRaw: crmData,
-      });
-    }
+ const first = crmData?.data?.[0];
+if (first && first.code === "SUCCESS") {
+  // ✅ Generate PDF only when quote is Accepted
+  if (finalAction === "Accepted") {
+    fetch(`https://easyquote-pearl.vercel.app/api/pdf?qid=${qid}`)
+      .catch(e => console.error("PDF generation error:", e));
+  }
+
+  // then return normal response to client
+  return res.status(200).json({ ok: true, action: finalAction, sent: updateMap });
+} else {
+  return res.status(400).json({
+    ok: false,
+    message: "Zoho did not accept the update",
+    sent: updateMap,
+    crmRaw: crmData,
+  });
+}
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
